@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Chat - EmpyreanOS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.0/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; overflow: hidden; }
+        .sidebar { min-height: 100vh; background-color: #343a40; color: white; width: 250px; position: fixed; z-index: 1000; }
+        .sidebar a { color: #c2c7d0; text-decoration: none; padding: 12px 20px; display: block; transition: 0.3s; border-radius: 0 25px 25px 0; margin-right: 10px; }
+        .sidebar a:hover, .sidebar a.active { background-color: #494e53; color: white; }
+        .main-content { margin-left: 250px; padding: 20px; width: calc(100% - 250px); height: 100vh; display: flex; flex-direction: column; }
+        
+        .chat-container { flex: 1; background: #fff; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); display: flex; overflow: hidden; margin-bottom: 10px; }
+        .contacts-pane { width: 30%; border-right: 1px solid #dee2e6; display: flex; flex-direction: column; background-color: #fff; }
+        .chat-pane { width: 70%; display: flex; flex-direction: column; background-color: #f8f9fa; }
+        
+        .contacts-header { padding: 15px; border-bottom: 1px solid #dee2e6; background-color: #fff; }
+        .contact-list { overflow-y: auto; flex: 1; padding: 0; margin: 0; list-style: none; }
+        .contact-item { padding: 12px 15px; border-bottom: 1px solid #f1f3f5; cursor: pointer; display: flex; align-items: center; transition: background-color 0.2s; }
+        .contact-item:hover { background-color: #f8f9fa; }
+        .contact-item.active { background-color: #e9ecef; border-left: 4px solid #0d6efd; }
+        
+        /* 🔥 THE WHATSAPP-STYLE NOTIFICATION BADGE */
+        .unread-badge {
+            background-color: #25d366; 
+            color: white;
+            border-radius: 50%;
+            padding: 2px 7px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            margin-left: auto; 
+            display: none; 
+        }
+
+        .chat-header { padding: 15px; border-bottom: 1px solid #dee2e6; background-color: #fff; display: flex; align-items: center; justify-content: space-between; }
+        .chat-messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        .chat-input-area { padding: 15px; background-color: #fff; border-top: 1px solid #dee2e6; }
+        
+        .message { max-width: 70%; padding: 10px 15px; border-radius: 15px; font-size: 0.95rem; position: relative; }
+        .msg-received { background-color: #e9ecef; color: #333; align-self: flex-start; border-bottom-left-radius: 2px; }
+        .msg-sent { background-color: #0d6efd; color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
+        .msg-time { font-size: 0.7rem; margin-top: 5px; text-align: right; display: block; opacity: 0.8;}
+        .sender-name { font-weight: 700; font-size: 0.8rem; margin-bottom: 3px; display: block; color: #495057;}
+        .msg-sent .sender-name { color: #e0e0e0; }
+        
+        #connectionStatus { font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar d-flex flex-column">
+        <h4 class="text-center py-4 border-bottom border-secondary" style="font-weight: 800; letter-spacing: 1px; color: white;">Empyrean<span class="text-info">OS</span></h4>
+        
+        <nav class="mt-2" id="dynamicSidebarMenu"></nav>
+        
+        <a href="#" onclick="logout()" class="text-danger mt-auto p-3 text-decoration-none fw-bold border-top border-secondary">
+            <i class="fa-solid fa-right-from-bracket me-2"></i> Secure Logout
+        </a>
+    </div>
+
+    <div class="main-content">
+        <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm mb-3 rounded">
+            <div class="container-fluid">
+                <span class="navbar-brand mb-0 h1">Company Communications</span>
+                
+                <div class="d-flex align-items-center">
+                    <div class="position-relative me-4" style="cursor: pointer;">
+                        <i class="fa-solid fa-bell fs-5 text-secondary"></i>
+                    </div>
+                    <div class="dropdown">
+                        <a href="#" class="d-flex align-items-center text-decoration-none text-dark">
+                            <img src="" id="navAvatar" width="40" height="40" class="rounded-circle me-2">
+                            <strong id="navUserName">Loading...</strong>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <div class="chat-container">
+            <div class="contacts-pane">
+                <div class="contacts-header">
+                    <input type="text" class="form-control form-control-sm" placeholder="Search team members...">
+                </div>
+                <ul class="contact-list" id="contactListBody">
+                    <li class="p-3 text-center text-muted small">Loading team...</li>
+                </ul>
+            </div>
+
+            <div class="chat-pane">
+                <div class="chat-header" id="activeChatHeader">
+                    </div>
+                
+                <div class="chat-messages" id="chatBox">
+                    </div>
+
+                <div class="chat-input-area">
+                    <form id="chatForm" class="d-flex gap-2">
+                        <button type="button" class="btn btn-light border text-secondary"><i class="fa-solid fa-paperclip"></i></button>
+                        <input type="text" id="messageInput" class="form-control" placeholder="Type a message..." autocomplete="off" disabled>
+                        <button type="submit" id="sendBtn" class="btn btn-primary px-4" disabled><i class="fa-solid fa-paper-plane"></i></button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // --- 1. CRASH-PROOF SECURITY ---
+        if (localStorage.getItem('isLoggedIn') !== 'true') window.location.href = 'login.html';
+        
+        const role = localStorage.getItem('userRole');
+        const currentUserName = localStorage.getItem('currentUserName') || 'User';
+        let currentChatRoom = 'General Channel'; 
+        let stompClient = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Setup Navbar Profile
+            document.getElementById('navUserName').innerText = currentUserName;
+            document.getElementById('navAvatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUserName)}&background=0D8ABC&color=fff`;
+
+            // --- THE ULTIMATE DYNAMIC SIDEBAR ENGINE ---
+            const sidebarMenu = document.getElementById('dynamicSidebarMenu');
+            let menuHtml = '';
+            let currentPageName = window.location.pathname.split('/').pop() || 'chat.html';
+
+            // 1. MAIN
+            menuHtml += `<p class="text-secondary ms-3 mb-1 mt-2" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">MAIN</p>`;
+            menuHtml += `<a href="index.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-house fa-fw me-2"></i> Dashboard</a>`;
+            menuHtml += `<a href="attendance.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-clock fa-fw me-2"></i> Time & Attendance</a>`;
+            menuHtml += `<a href="leaves.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-plane-departure fa-fw me-2"></i> Leave Management</a>`;
+            menuHtml += `<a href="calendar.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-calendar-days fa-fw me-2"></i> Calendar</a>`;
+            menuHtml += `<a href="chat.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-comments fa-fw me-2"></i> Communications</a>`;
+            
+            // 2. MY WORKSPACE
+            if (role === 'Employee' || role === 'Manager') {
+                menuHtml += `<p class="text-secondary ms-3 mb-1 mt-3" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">MY WORKSPACE</p>`;
+                menuHtml += `<a href="workspace.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-laptop-code fa-fw me-2"></i> My Workspace</a>`;
+            }
+
+            // 3. TEAM MANAGEMENT
+            if (role === 'Manager' || role === 'Boss') {
+                menuHtml += `<p class="text-secondary ms-3 mb-1 mt-3" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">TEAM MANAGEMENT</p>`;
+                menuHtml += `<a href="team.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-users-viewfinder fa-fw me-2"></i> Team Hub</a>`;
+                menuHtml += `<a href="reports.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-chart-pie fa-fw me-2"></i> Team Reports</a>`;
+            }
+
+            // 4. OPERATIONS & GOD MODE (Boss Only)
+            if (role === 'Boss') {
+                menuHtml += `<p class="text-secondary ms-3 mb-1 mt-3" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">OPERATIONS</p>`;
+                menuHtml += `<a href="employees.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-users-gear fa-fw me-2"></i> Directory & Access</a>`;
+                menuHtml += `<a href="payroll.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-money-check-dollar fa-fw me-2"></i> Payroll & Finance</a>`;
+                
+                menuHtml += `<p class="text-info ms-3 mb-1 mt-3" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;"><i class="fa-solid fa-bolt"></i> GOD MODE</p>`;
+                menuHtml += `<a href="godmode.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-server fa-fw me-2"></i> Executive Console</a>`;
+            }
+
+            // 5. SYSTEM
+            menuHtml += `<p class="text-secondary ms-3 mb-1 mt-3" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">SYSTEM</p>`;
+            menuHtml += `<a href="settings.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-gear fa-fw me-2"></i> Settings</a>`;
+
+            sidebarMenu.innerHTML = menuHtml;
+
+            // Auto-highlight current page
+            const activeLink = document.querySelector(`#dynamicSidebarMenu a[href="${currentPageName}"]`);
+            if (activeLink) activeLink.style.backgroundColor = '#494e53';
+
+            // Start the Chat Engines
+            loadTeamContacts(); 
+            connectWebSocket(); 
+            switchChat('General Channel', 'Live Company Broadcast'); 
+        });
+
+        function logout() { localStorage.clear(); window.location.href = 'login.html'; }
+
+        // --- 2. LOAD SIDEBAR CONTACTS ---
+        async function loadTeamContacts() {
+            try {
+                const response = await fetch('http://localhost:8080/employees');
+                const employees = await response.json();
+                const contactList = document.getElementById('contactListBody');
+                
+                contactList.innerHTML = `
+                    <li class="contact-item active" id="contact-General Channel" onclick="switchChat('General Channel', 'Live Company Broadcast')">
+                        <div class="bg-secondary rounded-circle me-3" style="width: 40px; height: 40px; display:flex; align-items:center; justify-content:center; color:white;"><i class="fa-solid fa-globe"></i></div>
+                        <div class="flex-grow-1"><h6 class="mb-0">General Channel</h6><small class="text-muted">Broadcast</small></div>
+                        <span class="unread-badge" id="badge-General Channel">0</span>
+                    </li>
+                `;
+
+                employees.forEach(emp => {
+                    if(emp.name !== currentUserName) {
+                        const avatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.name)}&background=random&color=fff`;
+                        contactList.innerHTML += `
+                            <li class="contact-item" id="contact-${emp.name}" onclick="switchChat('${emp.name}', '${emp.designation || 'Staff'}')">
+                                <img src="${avatar}" class="rounded-circle me-3" width="40" height="40">
+                                <div class="flex-grow-1"><h6 class="mb-0">${emp.name}</h6><small class="text-muted">${emp.designation || 'Staff'}</small></div>
+                                <span class="unread-badge" id="badge-${emp.name}">0</span>
+                            </li>
+                        `;
+                    }
+                });
+            } catch (error) { console.error(error); }
+        }
+
+        // --- 3. SWITCH ROOMS & FETCH HISTORY ---
+        async function switchChat(roomName, subtitle) {
+            currentChatRoom = roomName;
+
+            // Highlight active contact
+            document.querySelectorAll('.contact-item').forEach(el => el.classList.remove('active'));
+            const activeContact = document.getElementById(`contact-${roomName}`);
+            if(activeContact) activeContact.classList.add('active');
+
+            // 🔥 CLEAR THE NOTIFICATION BADGE
+            const badge = document.getElementById(`badge-${roomName}`);
+            if(badge) {
+                badge.innerText = '0';
+                badge.style.display = 'none';
+            }
+
+            // Update Header
+            const avatarHtml = roomName === 'General Channel' 
+                ? `<div class="bg-primary rounded-circle me-3" style="width: 40px; height: 40px; display:flex; align-items:center; justify-content:center; color:white;"><i class="fa-solid fa-globe"></i></div>`
+                : `<img src="https://ui-avatars.com/api/?name=${encodeURIComponent(roomName)}&background=random&color=fff" class="rounded-circle me-3" width="40" height="40">`;
+
+            document.getElementById('activeChatHeader').innerHTML = `
+                <div class="d-flex align-items-center">${avatarHtml}<div><h6 class="mb-0">${roomName}</h6><small class="text-success"><i class="fa-solid fa-circle text-success" style="font-size: 8px;"></i> ${subtitle || 'Direct Message'}</small></div></div>
+                <span id="connectionStatus" class="badge bg-success">Connected</span>
+            `;
+
+            const chatBox = document.getElementById('chatBox');
+            chatBox.innerHTML = ''; 
+
+            // FETCH DATABASE HISTORY
+            try {
+                const response = await fetch(`http://localhost:8080/chat/history?user1=${currentUserName}&user2=${roomName}`);
+                const history = await response.json();
+                
+                if (history.length === 0) {
+                    chatBox.innerHTML = `<div class="d-flex justify-content-center mb-3"><span class="badge bg-light text-secondary border">Start of your chat history with ${roomName}</span></div>`;
+                } else {
+                    history.forEach(msg => displayMessage(msg));
+                }
+            } catch (error) { console.error("Error fetching history"); }
+        }
+
+        // --- 4. LIVE WEBSOCKET ENGINE ---
+        function connectWebSocket() {
+            const socket = new SockJS('http://localhost:8080/ws');
+            stompClient = Stomp.over(socket);
+            stompClient.debug = null; 
+
+            stompClient.connect({}, function (frame) {
+                document.getElementById('messageInput').disabled = false;
+                document.getElementById('sendBtn').disabled = false;
+
+                stompClient.subscribe('/topic/public', function (payload) {
+                    const message = JSON.parse(payload.body);
+                    
+                    // SMART ROUTING LOGIC
+                    if (currentChatRoom === 'General Channel' && message.recipient === 'General Channel') {
+                        displayMessage(message);
+                    } 
+                    else if ((message.sender === currentChatRoom && message.recipient === currentUserName) || 
+                             (message.sender === currentUserName && message.recipient === currentChatRoom)) {
+                        displayMessage(message);
+                    } 
+                    else if (message.recipient === currentUserName || message.recipient === 'General Channel') {
+                        // BACKGROUND MESSAGE ARRIVED
+                        let senderId = message.recipient === 'General Channel' ? 'General Channel' : message.sender;
+                        triggerNotificationBadge(senderId);
+                    }
+                });
+            });
+        }
+
+        // --- 🔥 TRIGGER GREEN BADGE FUNCTION ---
+        function triggerNotificationBadge(senderName) {
+            if(senderName === currentUserName) return;
+            const badge = document.getElementById(`badge-${senderName}`);
+            if(badge) {
+                let currentCount = parseInt(badge.innerText) || 0;
+                currentCount++;
+                badge.innerText = currentCount > 9 ? '9+' : currentCount;
+                badge.style.display = 'inline-block'; 
+            }
+        }
+
+        // --- 5. SEND MESSAGE ---
+        document.getElementById('chatForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const inputField = document.getElementById('messageInput');
+            const messageText = inputField.value.trim();
+            
+            if (messageText && stompClient) {
+                const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const chatMessage = {
+                    sender: currentUserName,
+                    recipient: currentChatRoom, 
+                    content: messageText,
+                    time: timeString
+                };
+
+                stompClient.send("/app/chat.sendMessage", {}, JSON.stringify(chatMessage));
+                inputField.value = '';
+            }
+        });
+
+        // --- 6. RENDER MESSAGE BUBBLE ---
+        function displayMessage(message) {
+            const chatBox = document.getElementById('chatBox');
+            const isMyMessage = message.sender === currentUserName;
+            const bubbleClass = isMyMessage ? 'msg-sent' : 'msg-received';
+            const senderLabel = isMyMessage ? 'You' : message.sender;
+
+            chatBox.innerHTML += `
+                <div class="message ${bubbleClass}">
+                    <span class="sender-name">${senderLabel}</span>
+                    ${message.content}
+                    <span class="msg-time">${message.time}</span>
+                </div>
+            `;
+            chatBox.scrollTop = chatBox.scrollHeight; 
+        }
+    </script>
+</body>
+</html>

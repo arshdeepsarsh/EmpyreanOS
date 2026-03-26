@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employees - EmpyreanOS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; }
+        .sidebar { min-height: 100vh; background-color: #343a40; color: white; width: 250px; position: fixed; }
+        .sidebar a { color: #c2c7d0; text-decoration: none; padding: 12px 20px; display: block; transition: 0.3s; border-radius: 0 25px 25px 0; margin-right: 10px; }
+        .sidebar a:hover, .sidebar a.active { background-color: #494e53; color: white; }
+        .main-content { margin-left: 250px; padding: 20px; width: calc(100% - 250px); }
+        .table-wrapper { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .table-title { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .action-btns .btn { padding: 4px 8px; font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar d-flex flex-column">
+        <h4 class="text-center py-4 border-bottom border-secondary" style="font-weight: 800; letter-spacing: 1px; color: white;">Empyrean<span class="text-info">OS</span></h4>
+        
+        <nav class="mt-2" id="dynamicSidebarMenu"></nav>
+        
+        <a href="#" onclick="logout()" class="text-danger mt-auto p-3 text-decoration-none fw-bold border-top border-secondary">
+            <i class="fa-solid fa-right-from-bracket me-2"></i> Secure Logout
+        </a>
+    </div>
+
+    <div class="main-content">
+        <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm mb-4 rounded">
+            <div class="container-fluid"><span class="navbar-brand mb-0 h1">Employee Management</span></div>
+        </nav>
+
+        <div class="table-wrapper">
+            <div class="table-title">
+                <h5 class="mb-0">All Employees</h5>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addEmployeeModal"><i class="fa-solid fa-plus me-1"></i> Add New Employee</button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>EMP ID</th>
+                            <th>Profile</th>
+                            <th>Email</th>
+                            <th>Mobile</th>
+                            <th>Department</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="employeeTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="addEmployeeModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add New Employee</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addEmployeeForm">
+                        <div class="mb-3">
+                            <label class="form-label">Full Name</label>
+                            <input type="text" class="form-control" id="empName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email Address</label>
+                            <input type="email" class="form-control" id="empEmail" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Mobile Number</label>
+                            <input type="text" class="form-control" id="empMobile" required>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Department</label>
+                                <select class="form-select" id="empDept" required>
+                                    <option value="" selected disabled>Select...</option>
+                                    <option value="Engineering">Engineering</option>
+                                    <option value="HR">HR</option>
+                                    <option value="Sales">Sales</option>
+                                    <option value="Legal">Legal</option>
+                                    <option value="Graphic Designing">Graphic Designing</option>
+                                    <option value="Marketing">Marketing</option>
+                                    <option value="General">General</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Designation</label>
+                                <input type="text" class="form-control" id="empDesignation" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">System Role</label>
+                                <select class="form-select" id="empRole" required>
+                                    <option value="Employee" selected>Employee</option>
+                                    <option value="Manager">Manager</option>
+                                    <option value="Boss">Boss</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Join Date</label>
+                                <input type="date" class="form-control" id="empJoinDate" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Temporary Password</label>
+                            <input type="password" class="form-control" id="empPassword" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="saveEmployeeBtn">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="editEmployeeModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Edit Employee Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editEmployeeForm">
+                        <input type="hidden" id="editEmpId">
+                        <div class="mb-3">
+                            <label class="form-label">Full Name</label>
+                            <input type="text" class="form-control" id="editEmpName" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email Address</label>
+                            <input type="email" class="form-control" id="editEmpEmail" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Mobile Number</label>
+                            <input type="text" class="form-control" id="editEmpMobile" required>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Department</label>
+                                <select class="form-select" id="editEmpDept" required>
+                                    <option value="Engineering">Engineering</option>
+                                    <option value="HR">HR</option>
+                                    <option value="Sales">Sales</option>
+                                    <option value="Marketing">Marketing</option>
+                                    <option value="General">General</option>
+                                    <option value="Graphic Designing">Graphic Designing</option>
+                                    <option value="Legal">Legal</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Designation</label>
+                                <input type="text" class="form-control" id="editEmpDesignation" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">System Role</label>
+                                <select class="form-select" id="editEmpRole" required>
+                                    <option value="Employee">Employee (View Only)</option>
+                                    <option value="Manager">Manager (Admin)</option>
+                                    <option value="Boss">Boss (Full Access)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Join Date</label>
+                                <input type="date" class="form-control" id="editEmpJoinDate" required>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="saveEditBtn">Save Changes</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const API_BASE_URL = 'http://localhost:8080/employees';
+
+        async function loadEmployees() {
+            try {
+                const response = await fetch(API_BASE_URL);
+                const allUsers = await response.json();
+                
+                // Hide Boss from the staff list table
+                const staffOnly = allUsers.filter(user => user.role !== 'Boss');
+                
+                const tbody = document.getElementById('employeeTableBody');
+                tbody.innerHTML = ''; 
+
+                staffOnly.forEach(emp => {
+                    const empId = emp.employee_id || emp.id || "N/A"; 
+                    const designation = emp.designation || 'Staff'; 
+                    const roleBadge = emp.role === 'Manager' ? 'bg-primary' : 'bg-secondary';
+                    
+                    const row = `
+                        <tr>
+                            <td><strong>${empId}</strong></td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(emp.name)}&background=random" class="rounded-circle me-2" width="35" alt="Avatar">
+                                    <div>
+                                        <div class="fw-bold">${emp.name} <span class="badge ${roleBadge} ms-1" style="font-size: 0.65rem;">${emp.role}</span></div>
+                                        <div class="text-muted" style="font-size: 0.75rem;">${designation}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>${emp.email}</td>
+                            <td>${emp.mobile}</td>
+                            <td><span class="badge bg-light text-dark border">${emp.department}</span></td>
+                            <td class="text-center action-btns">
+                                <button class="btn btn-sm btn-outline-danger me-1" title="Download Offer Letter" onclick="downloadOfferLetter(${emp.id})"><i class="fa-solid fa-file-pdf"></i></button>
+                                
+                                <button class="btn btn-sm btn-light text-secondary border-0 me-1" title="Edit Employee" onclick="openEditModal(${emp.id})"><i class="fa-solid fa-pen"></i></button>
+                                <button class="btn btn-sm btn-light text-secondary border-0" title="Delete Employee" onclick="deleteEmployee(${emp.id})"><i class="fa-solid fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+            } catch (error) { console.error("Error:", error); }
+        }
+
+        // 🔥 ADDED: The function to trigger the PDF download from your Java backend
+        function downloadOfferLetter(employeeId) {
+            window.open(`http://localhost:8080/employees/${employeeId}/offer-letter`, '_blank');
+        }
+
+        document.getElementById('saveEmployeeBtn').addEventListener('click', async function() {
+            const data = {
+                name: document.getElementById('empName').value,
+                email: document.getElementById('empEmail').value,
+                mobile: document.getElementById('empMobile').value,
+                department: document.getElementById('empDept').value,
+                designation: document.getElementById('empDesignation').value,
+                role: document.getElementById('empRole').value,
+                joinDate: document.getElementById('empJoinDate').value,
+                password: document.getElementById('empPassword').value
+            };
+
+            try {
+                const response = await fetch(API_BASE_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (response.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById('addEmployeeModal')).hide();
+                    document.getElementById('addEmployeeForm').reset();
+                    loadEmployees(); 
+                }
+            } catch (error) { console.error("Error:", error); }
+        });
+
+        async function deleteEmployee(id) {
+            if (confirm("Remove this employee?")) {
+                try {
+                    await fetch(`${API_BASE_URL}/${id}`, { method: 'DELETE' });
+                    loadEmployees(); 
+                } catch (error) { console.error("Error:", error); }
+            }
+        }
+
+        async function openEditModal(id) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/${id}`);
+                const emp = await response.json();
+                
+                document.getElementById('editEmpId').value = emp.id;
+                document.getElementById('editEmpName').value = emp.name;
+                document.getElementById('editEmpEmail').value = emp.email;
+                document.getElementById('editEmpMobile').value = emp.mobile; 
+                document.getElementById('editEmpDept').value = emp.department;
+                document.getElementById('editEmpDesignation').value = emp.designation || '';
+                document.getElementById('editEmpRole').value = emp.role || 'Employee';
+                document.getElementById('editEmpJoinDate').value = emp.joinDate || ''; 
+
+                new bootstrap.Modal(document.getElementById('editEmployeeModal')).show();
+            } catch (error) { alert("Could not load details."); }
+        }
+
+        document.getElementById('saveEditBtn').addEventListener('click', async function() {
+            const id = document.getElementById('editEmpId').value;
+            
+            const updatedData = { 
+                name: document.getElementById('editEmpName').value, 
+                email: document.getElementById('editEmpEmail').value, 
+                mobile: document.getElementById('editEmpMobile').value, 
+                department: document.getElementById('editEmpDept').value,
+                designation: document.getElementById('editEmpDesignation').value,
+                role: document.getElementById('editEmpRole').value,
+                joinDate: document.getElementById('editEmpJoinDate').value 
+            };
+
+            try {
+                const response = await fetch(`${API_BASE_URL}/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(updatedData)
+                });
+                if (response.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById('editEmployeeModal')).hide();
+                    loadEmployees();
+                }
+            } catch (error) { console.error("Update error:", error); }
+        });
+
+        // --- CRASH-PROOF SECURITY & UNIVERSAL SIDEBAR ---
+        if (localStorage.getItem('isLoggedIn') !== 'true') window.location.href = 'login.html';
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            const role = localStorage.getItem('userRole');
+            
+            // --- THE ULTIMATE DYNAMIC SIDEBAR ENGINE ---
+            const sidebarMenu = document.getElementById('dynamicSidebarMenu');
+            let menuHtml = '';
+            let currentPageName = window.location.pathname.split('/').pop() || 'employees.html';
+
+            // 1. MAIN
+            menuHtml += `<p class="text-secondary ms-3 mb-1 mt-2" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">MAIN</p>`;
+            menuHtml += `<a href="index.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-house fa-fw me-2"></i> Dashboard</a>`;
+            menuHtml += `<a href="attendance.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-clock fa-fw me-2"></i> Time & Attendance</a>`;
+            menuHtml += `<a href="leaves.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-plane-departure fa-fw me-2"></i> Leave Management</a>`;
+            menuHtml += `<a href="calendar.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-calendar-days fa-fw me-2"></i> Calendar</a>`;
+            menuHtml += `<a href="chat.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-comments fa-fw me-2"></i> Communications</a>`;
+            
+            // 2. MY WORKSPACE
+            if (role === 'Employee' || role === 'Manager') {
+                menuHtml += `<p class="text-secondary ms-3 mb-1 mt-3" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">MY WORKSPACE</p>`;
+                menuHtml += `<a href="workspace.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-laptop-code fa-fw me-2"></i> My Workspace</a>`;
+            }
+
+            // 3. TEAM MANAGEMENT
+            if (role === 'Manager' || role === 'Boss') {
+                menuHtml += `<p class="text-secondary ms-3 mb-1 mt-3" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">TEAM MANAGEMENT</p>`;
+                menuHtml += `<a href="team.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-users-viewfinder fa-fw me-2"></i> Team Hub</a>`;
+                
+                if (role === 'Manager') {
+                    menuHtml += `<a href="reports.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-chart-pie fa-fw me-2"></i> Team Reports</a>`;
+                }
+            }
+
+            // 4. OPERATIONS & GOD MODE (Boss Only)
+            if (role === 'Boss') {
+                menuHtml += `<p class="text-secondary ms-3 mb-1 mt-3" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">OPERATIONS</p>`;
+                menuHtml += `<a href="employees.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-users-gear fa-fw me-2"></i> Directory & Access</a>`;
+                menuHtml += `<a href="payroll.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-money-check-dollar fa-fw me-2"></i> Payroll & Finance</a>`;
+                menuHtml += `<a href="reports.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-chart-line fa-fw me-2"></i> Company Analytics</a>`;
+                
+                menuHtml += `<p class="text-info ms-3 mb-1 mt-3" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;"><i class="fa-solid fa-bolt"></i> GOD MODE</p>`;
+                menuHtml += `<a href="godmode.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-server fa-fw me-2"></i> Executive Console</a>`;
+            }
+
+            // 5. SYSTEM
+            menuHtml += `<p class="text-secondary ms-3 mb-1 mt-3" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">SYSTEM</p>`;
+            menuHtml += `<a href="settings.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-gear fa-fw me-2"></i> Settings</a>`;
+
+            sidebarMenu.innerHTML = menuHtml;
+
+            // Auto-highlight the current page!
+            const activeLink = document.querySelector(`#dynamicSidebarMenu a[href="${currentPageName}"]`);
+            if (activeLink) {
+                if (currentPageName === 'godmode.html') {
+                    activeLink.style.backgroundColor = '#2d2d2d';
+                    activeLink.style.borderLeft = '3px solid #0dcaf0';
+                } else {
+                    activeLink.style.backgroundColor = '#494e53';
+                }
+            }
+
+            // URL Route Protection - Kicks unauthorized users back to the dashboard
+            if (role === 'Employee') {
+                const restrictedPages = ['employees.html', 'payroll.html', 'reports.html', 'godmode.html', 'team.html'];
+                if (restrictedPages.includes(currentPageName)) window.location.href = 'index.html';
+            } else if (role === 'Manager') {
+                const restrictedPages = ['employees.html', 'payroll.html', 'godmode.html'];
+                if (restrictedPages.includes(currentPageName)) window.location.href = 'index.html';
+            }
+
+            // Finally, load the table data
+            loadEmployees();
+        });
+
+        function logout() { localStorage.clear(); window.location.href = 'login.html'; }
+    </script>
+</body>
+</html>

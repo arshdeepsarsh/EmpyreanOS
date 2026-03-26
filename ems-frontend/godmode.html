@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Executive God Mode - EmpyreanOS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #121212; color: #e0e0e0; }
+        .sidebar { min-height: 100vh; background-color: #0a0a0a; border-right: 1px solid #333; color: white; width: 250px; position: fixed; }
+        .sidebar a { color: #aaa; text-decoration: none; padding: 12px 20px; display: block; transition: 0.3s; border-radius: 0 25px 25px 0; margin-right: 10px; }
+        .sidebar a:hover, .sidebar a.active { background-color: #2d2d2d; color: white; }
+        .main-content { margin-left: 250px; padding: 20px; width: calc(100% - 250px); }
+        
+        .god-card { background: #1e1e1e; border: 1px solid #333; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); min-height: 60vh; }
+        .nav-tabs .nav-link { color: #aaa; font-weight: 600; padding: 12px 25px; border: none; border-bottom: 3px solid transparent; }
+        .nav-tabs .nav-link.active { color: #0dcaf0; background: transparent; border-bottom: 3px solid #0dcaf0; }
+        .nav-tabs { border-bottom: 1px solid #333; margin-bottom: 25px; }
+        
+        .runway-box { background: linear-gradient(135deg, #212529 0%, #000 100%); border: 1px solid #0dcaf0; border-radius: 12px; padding: 25px; }
+        .audit-table { color: #e0e0e0; }
+        .audit-table th { background-color: #2d2d2d; color: #fff; border-bottom: 2px solid #444; }
+        .audit-table td { border-bottom: 1px solid #333; }
+        
+        /* Custom Range Slider */
+        input[type=range] { accent-color: #0dcaf0; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar d-flex flex-column">
+        <h4 class="text-center py-4 border-bottom border-secondary" style="font-weight: 800; letter-spacing: 1px; color: white;">Empyrean<span class="text-info">OS</span></h4>
+        <nav class="mt-2" id="dynamicSidebarMenu"></nav>
+        <a href="#" onclick="logout()" class="text-danger mt-auto p-3 text-decoration-none fw-bold border-top border-secondary">
+            <i class="fa-solid fa-right-from-bracket me-2"></i> Secure Logout
+        </a>
+    </div>
+
+    <div class="main-content">
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm mb-4 rounded" style="border: 1px solid #333;">
+            <div class="container-fluid">
+                <span class="navbar-brand mb-0 h1 text-info"><i class="fa-solid fa-bolt me-2"></i> Executive Command Center</span>
+                <div class="d-flex align-items-center">
+                    <span class="badge bg-danger me-4 px-3 py-2"><i class="fa-solid fa-shield-halved me-1"></i> GOD MODE ACTIVE</span>
+                    <div class="dropdown">
+                        <a href="#" class="d-flex align-items-center text-decoration-none text-light">
+                            <img src="" id="navAvatar" width="40" height="40" class="rounded-circle me-2 border border-info">
+                            <strong id="navUserName">Loading...</strong>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <div class="god-card">
+            <ul class="nav nav-tabs" id="godTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#finance-tab" type="button"><i class="fa-solid fa-chart-line me-2"></i> AI Financial Simulator</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#audit-tab" type="button"><i class="fa-solid fa-user-secret me-2"></i> Global Audit Log</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#broadcast-tab" type="button"><i class="fa-solid fa-bullhorn me-2"></i> Master Broadcast</button>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="godTabsContent">
+                
+                <div class="tab-pane fade show active" id="finance-tab">
+                    <div class="row">
+                        <div class="col-md-5 pe-4">
+                            <h5 class="mb-3 text-info">"What-If" Budget Engine</h5>
+                            <p class="text-muted small">Adjust the sliders to simulate how hiring affects your company's cash runway.</p>
+                            
+                            <label class="form-label mt-3">Simulate New Software Engineers</label>
+                            <div class="d-flex align-items-center">
+                                <input type="range" class="form-range flex-grow-1" id="simHires" min="0" max="20" value="0" oninput="runSimulation()">
+                                <span class="ms-3 badge bg-light text-dark fs-6" id="simHiresLabel" style="width: 40px;">0</span>
+                            </div>
+
+                            <label class="form-label mt-4">Estimated Salary per Hire ($)</label>
+                            <div class="d-flex align-items-center">
+                                <input type="range" class="form-range flex-grow-1" id="simSalary" min="40000" max="150000" step="5000" value="80000" oninput="runSimulation()">
+                                <span class="ms-3 badge bg-light text-dark fs-6" id="simSalaryLabel" style="width: 80px;">$80k</span>
+                            </div>
+
+                            <div class="mt-5 p-3 border border-warning rounded bg-dark">
+                                <h6 class="text-warning"><i class="fa-solid fa-building-columns me-2"></i>Current Treasury</h6>
+                                <div class="input-group mt-2">
+                                    <span class="input-group-text bg-dark text-light border-secondary">$</span>
+                                    <input type="number" class="form-control bg-dark text-light border-secondary" id="simTreasury" value="1500000" oninput="runSimulation()">
+                                </div>
+                                <small class="text-muted mt-1 d-block">Cash currently sitting in the bank.</small>
+                            </div>
+                        </div>
+
+                        <div class="col-md-7 ps-4 border-start border-secondary">
+                            <div class="runway-box text-center shadow-lg">
+                                <h5 class="text-white opacity-75 mb-4">Projected Cash Runway</h5>
+                                
+                                <div class="row mb-4">
+                                    <div class="col-6 border-end border-secondary">
+                                        <p class="mb-0 text-muted small">Current Monthly Burn</p>
+                                        <h3 class="text-danger" id="currentBurn">-$45,000</h3>
+                                    </div>
+                                    <div class="col-6">
+                                        <p class="mb-0 text-muted small">New Simulated Burn</p>
+                                        <h3 class="text-warning" id="simulatedBurn">-$45,000</h3>
+                                    </div>
+                                </div>
+                                
+                                <p class="mb-0 text-muted">Months of Cash Remaining</p>
+                                <h1 class="display-1 fw-bold text-info" id="runwayMonths">33.3</h1>
+                                <p class="mt-2" id="runwayWarning"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="audit-tab">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5 class="text-info">Master Security Logs</h5>
+                        <button class="btn btn-outline-info btn-sm" onclick="loadAuditLogs()"><i class="fa-solid fa-rotate me-1"></i> Refresh Logs</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-hover audit-table align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>User</th>
+                                    <th>Action Performed</th>
+                                    <th>Risk Level</th>
+                                </tr>
+                            </thead>
+                            <tbody id="auditTableBody">
+                                <tr><td colspan="4" class="text-center py-4">Fetching security logs...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="broadcast-tab">
+                    <div class="row justify-content-center">
+                        <div class="col-md-8 text-center mt-4">
+                            <i class="fa-solid fa-tower-broadcast text-danger mb-3" style="font-size: 4rem;"></i>
+                            <h4 class="mb-3">Emergency Broadcast System</h4>
+                            <p class="text-muted mb-4">Push an unblockable, high-priority alert to every dashboard currently active in the company.</p>
+                            
+                            <textarea class="form-control bg-dark text-light border-secondary mb-3" id="broadcastMessage" rows="3" placeholder="e.g. Server maintenance starting in 10 minutes. Please save your work."></textarea>
+                            <button class="btn btn-danger btn-lg w-100" onclick="sendBroadcast()"><i class="fa-solid fa-radiation me-2"></i> SEND GLOBAL ALERT</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        if (localStorage.getItem('isLoggedIn') !== 'true') window.location.href = 'login.html';
+        const role = localStorage.getItem('userRole');
+        const currentUserName = localStorage.getItem('currentUserName');
+
+        // GOD MODE LOCKOUT
+        if (role !== 'Boss') {
+            alert("SECURITY BREACH: Unauthorized Access Attempt Logged.");
+            window.location.href = 'index.html';
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('navUserName').innerText = currentUserName;
+            document.getElementById('navAvatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUserName)}&background=0D8ABC&color=fff`;
+
+            // --- THE DYNAMIC SIDEBAR ENGINE (Updated for God Mode) ---
+            const sidebarMenu = document.getElementById('dynamicSidebarMenu');
+            let menuHtml = '';
+
+            menuHtml += `<p class="text-secondary ms-3 mb-1 mt-2" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">MAIN</p>`;
+            menuHtml += `<a href="index.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-house fa-fw me-2"></i> Dashboard</a>`;
+            menuHtml += `<a href="attendance.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-clock fa-fw me-2"></i> Time & Attendance</a>`;
+            menuHtml += `<a href="leaves.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-plane-departure fa-fw me-2"></i> Leave Management</a>`;
+            menuHtml += `<a href="calendar.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-calendar-days fa-fw me-2"></i> Calendar</a>`;
+            menuHtml += `<a href="chat.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-comments fa-fw me-2"></i> Communications</a>`;
+            
+            menuHtml += `<p class="text-secondary ms-3 mb-1 mt-3" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">TEAM MANAGEMENT</p>`;
+            menuHtml += `<a href="team.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-users-viewfinder fa-fw me-2"></i> Team Hub</a>`;
+            
+            menuHtml += `<p class="text-secondary ms-3 mb-1 mt-3" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">OPERATIONS</p>`;
+            menuHtml += `<a href="employees.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-users-gear fa-fw me-2"></i> Directory & Access</a>`;
+            menuHtml += `<a href="payroll.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-money-check-dollar fa-fw me-2"></i> Payroll & Finance</a>`;
+            menuHtml += `<a href="reports.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-chart-line fa-fw me-2"></i> Company Analytics</a>`;
+            
+            menuHtml += `<p class="text-info ms-3 mb-1 mt-3" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;"><i class="fa-solid fa-bolt"></i> GOD MODE</p>`;
+            // 🔥 IT LINKS TO ITSELF NOW!
+            menuHtml += `<a href="godmode.html" class="text-white text-decoration-none p-2 ps-3 d-block" style="background-color: #2d2d2d; border-left: 3px solid #0dcaf0;"><i class="fa-solid fa-server fa-fw me-2"></i> Executive Console</a>`;
+
+            menuHtml += `<p class="text-secondary ms-3 mb-1 mt-3" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">SYSTEM</p>`;
+            menuHtml += `<a href="settings.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-gear fa-fw me-2"></i> Settings</a>`;
+
+            sidebarMenu.innerHTML = menuHtml;
+
+            // Initialize Page
+            runSimulation();
+            loadAuditLogs();
+        });
+
+        function logout() { localStorage.clear(); window.location.href = 'login.html'; }
+
+        // --- 1. FINANCIAL SIMULATOR ---
+        function runSimulation() {
+            const baseBurn = 45000; // Hardcoded base expenses for demo
+            const hires = parseInt(document.getElementById('simHires').value);
+            const avgSalary = parseInt(document.getElementById('simSalary').value);
+            const treasury = parseInt(document.getElementById('simTreasury').value);
+
+            document.getElementById('simHiresLabel').innerText = hires;
+            document.getElementById('simSalaryLabel').innerText = `$${(avgSalary/1000)}k`;
+
+            const monthlyCostPerHire = avgSalary / 12;
+            const newTotalBurn = baseBurn + (hires * monthlyCostPerHire);
+            const monthsLeft = treasury / newTotalBurn;
+
+            const format = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(num);
+
+            document.getElementById('currentBurn').innerText = `-${format(baseBurn)}`;
+            document.getElementById('simulatedBurn').innerText = `-${format(newTotalBurn)}`;
+            document.getElementById('runwayMonths').innerText = monthsLeft.toFixed(1);
+
+            const warningEl = document.getElementById('runwayWarning');
+            if (monthsLeft < 6) {
+                warningEl.innerHTML = `<span class="text-danger fw-bold"><i class="fa-solid fa-triangle-exclamation"></i> DANGER: Runway critically low. Prepare to raise funding.</span>`;
+            } else if (monthsLeft < 12) {
+                warningEl.innerHTML = `<span class="text-warning fw-bold"><i class="fa-solid fa-bell"></i> WARNING: Less than 12 months runway.</span>`;
+            } else {
+                warningEl.innerHTML = `<span class="text-success fw-bold"><i class="fa-solid fa-check"></i> Runway is healthy and stable.</span>`;
+            }
+        }
+
+        // --- 2. AUDIT LOGS ---
+        async function loadAuditLogs() {
+            try {
+                const res = await fetch('http://localhost:8080/godmode/audit');
+                const logs = await res.json();
+                const tbody = document.getElementById('auditTableBody');
+                tbody.innerHTML = '';
+
+                logs.forEach(log => {
+                    let badgeClass = 'bg-secondary';
+                    if(log.riskLevel === 'Medium') badgeClass = 'bg-warning text-dark';
+                    if(log.riskLevel === 'High') badgeClass = 'bg-orange'; // Custom
+                    if(log.riskLevel === 'CRITICAL') badgeClass = 'bg-danger';
+
+                    tbody.innerHTML += `
+                        <tr>
+                            <td class="text-muted small">${log.timestamp}</td>
+                            <td><strong class="text-info">${log.performedBy}</strong></td>
+                            <td>${log.actionTaken}</td>
+                            <td><span class="badge ${badgeClass}">${log.riskLevel}</span></td>
+                        </tr>
+                    `;
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        // --- 3. MASTER BROADCAST (Simulated for Demo) ---
+        function sendBroadcast() {
+            const msg = document.getElementById('broadcastMessage').value;
+            if(!msg) return alert("Message cannot be empty!");
+            
+            // In a real app, this would use the stompClient.send() from chat.html
+            // For now, we simulate the Boss's God Power!
+            alert(`🚨 GLOBAL BROADCAST INITIATED 🚨\n\nPushing to all devices: "${msg}"`);
+            document.getElementById('broadcastMessage').value = '';
+            
+            // Log it automatically!
+            fetch('http://localhost:8080/godmode/audit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    actionTaken: "Triggered Emergency Global Broadcast",
+                    performedBy: currentUserName,
+                    timestamp: new Date().toLocaleString(),
+                    riskLevel: "High"
+                })
+            }).then(() => loadAuditLogs());
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leave Management - EmpyreanOS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; }
+        .sidebar { min-height: 100vh; background-color: #343a40; color: white; width: 250px; position: fixed; z-index: 1000; }
+        .sidebar a { color: #c2c7d0; text-decoration: none; padding: 12px 20px; display: block; transition: 0.3s; border-radius: 0 25px 25px 0; margin-right: 10px; }
+        .sidebar a:hover, .sidebar a.active { background-color: #494e53; color: white; }
+        .main-content { margin-left: 250px; padding: 20px; width: calc(100% - 250px); }
+        .content-wrapper { background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .top-controls { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .badge-pending { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .badge-approved { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .badge-rejected { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar d-flex flex-column">
+        <h4 class="text-center py-4 border-bottom border-secondary" style="font-weight: 800; letter-spacing: 1px; color: white;">Empyrean<span class="text-info">OS</span></h4>
+        
+        <nav class="mt-2" id="dynamicSidebarMenu"></nav>
+        
+        <a href="#" onclick="logout()" class="text-danger mt-auto p-3 text-decoration-none fw-bold border-top border-secondary">
+            <i class="fa-solid fa-right-from-bracket me-2"></i> Secure Logout
+        </a>
+    </div>
+
+    <div class="main-content">
+        <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm mb-4 rounded">
+            <div class="container-fluid">
+                <span class="navbar-brand mb-0 h1">Leave Management</span>
+                
+                <div class="d-flex align-items-center">
+                    <div class="position-relative me-4" style="cursor: pointer;">
+                        <i class="fa-solid fa-bell fs-5 text-secondary"></i>
+                    </div>
+                    <div class="dropdown">
+                        <a href="#" class="d-flex align-items-center text-decoration-none text-dark">
+                            <img src="" id="navAvatar" width="40" height="40" class="rounded-circle me-2">
+                            <strong id="navUserName">Loading...</strong>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <div class="content-wrapper">
+            <div class="top-controls">
+                <h5 class="mb-0" id="leaveTableTitle">Leave Requests</h5>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#applyLeaveModal">
+                    <i class="fa-solid fa-plus me-1"></i> Apply for Leave
+                </button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle border-top">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Employee Name</th>
+                            <th>Leave Type</th>
+                            <th>Duration</th>
+                            <th>Status</th>
+                            <th class="text-center" id="actionHeader">Admin Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leavesTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="applyLeaveModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Apply for Leave</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="applyLeaveForm">
+                        <div class="mb-3" id="leaveEmpSelectDiv">
+                            <label class="form-label">Select Employee</label>
+                            <select class="form-select" id="leaveEmpSelect">
+                                <option value="" selected disabled>Loading employees...</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Leave Type</label>
+                            <select class="form-select" id="leaveTypeSelect" required>
+                                <option value="" selected disabled>Select Type</option>
+                                <option value="Sick Leave">Sick Leave</option>
+                                <option value="Casual Leave">Casual Leave</option>
+                                <option value="Vacation">Vacation</option>
+                            </select>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Start Date</label>
+                                <input type="date" class="form-control" id="leaveStartDate" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">End Date</label>
+                                <input type="date" class="form-control" id="leaveEndDate" required>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="submitLeaveBtn">Submit Request</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // --- 1. CRASH-PROOF SECURITY ---
+        if (localStorage.getItem('isLoggedIn') !== 'true') window.location.href = 'login.html';
+
+        const role = localStorage.getItem('userRole');
+        const currentUserId = localStorage.getItem('currentUserId');
+        const currentUserName = localStorage.getItem('currentUserName') || 'User';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // Setup Navbar Profile
+            document.getElementById('navUserName').innerText = currentUserName;
+            document.getElementById('navAvatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUserName)}&background=0D8ABC&color=fff`;
+
+            // --- THE ULTIMATE DYNAMIC SIDEBAR ENGINE ---
+            const sidebarMenu = document.getElementById('dynamicSidebarMenu');
+            let menuHtml = '';
+            let currentPageName = window.location.pathname.split('/').pop() || 'leaves.html';
+
+            // 1. MAIN
+            menuHtml += `<p class="text-secondary ms-3 mb-1 mt-2" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">MAIN</p>`;
+            menuHtml += `<a href="index.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-house fa-fw me-2"></i> Dashboard</a>`;
+            menuHtml += `<a href="attendance.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-clock fa-fw me-2"></i> Time & Attendance</a>`;
+            menuHtml += `<a href="leaves.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-plane-departure fa-fw me-2"></i> Leave Management</a>`;
+            menuHtml += `<a href="calendar.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-calendar-days fa-fw me-2"></i> Calendar</a>`;
+            menuHtml += `<a href="chat.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-comments fa-fw me-2"></i> Communications</a>`;
+            
+            // 2. MY WORKSPACE
+            if (role === 'Employee' || role === 'Manager') {
+                menuHtml += `<p class="text-secondary ms-3 mb-1 mt-3" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">MY WORKSPACE</p>`;
+                menuHtml += `<a href="workspace.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-laptop-code fa-fw me-2"></i> My Workspace</a>`;
+            }
+
+            // 3. TEAM MANAGEMENT
+            if (role === 'Manager' || role === 'Boss') {
+                menuHtml += `<p class="text-secondary ms-3 mb-1 mt-3" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">TEAM MANAGEMENT</p>`;
+                menuHtml += `<a href="team.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-users-viewfinder fa-fw me-2"></i> Team Hub</a>`;
+                menuHtml += `<a href="reports.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-chart-pie fa-fw me-2"></i> Team Reports</a>`;
+            }
+
+            // 4. OPERATIONS & GOD MODE (Boss Only)
+            if (role === 'Boss') {
+                menuHtml += `<p class="text-secondary ms-3 mb-1 mt-3" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">OPERATIONS</p>`;
+                menuHtml += `<a href="employees.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-users-gear fa-fw me-2"></i> Directory & Access</a>`;
+                menuHtml += `<a href="payroll.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-money-check-dollar fa-fw me-2"></i> Payroll & Finance</a>`;
+                
+                menuHtml += `<p class="text-info ms-3 mb-1 mt-3" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;"><i class="fa-solid fa-bolt"></i> GOD MODE</p>`;
+                menuHtml += `<a href="godmode.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-server fa-fw me-2"></i> Executive Console</a>`;
+            }
+
+            // 5. SYSTEM
+            menuHtml += `<p class="text-secondary ms-3 mb-1 mt-3" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">SYSTEM</p>`;
+            menuHtml += `<a href="settings.html" class="text-light text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-gear fa-fw me-2"></i> Settings</a>`;
+
+            sidebarMenu.innerHTML = menuHtml;
+
+            // Auto-highlight current page
+            const activeLink = document.querySelector(`#dynamicSidebarMenu a[href="${currentPageName}"]`);
+            if (activeLink) activeLink.style.backgroundColor = '#494e53';
+
+            // Route Security 
+            if (role === 'Employee') {
+                const restrictedPages = ['employees.html', 'payroll.html', 'reports.html'];
+                if (restrictedPages.includes(currentPageName)) window.location.href = 'index.html';
+                
+                // Hide actions and dropdown for employees
+                document.getElementById('actionHeader').style.display = 'none';
+                document.getElementById('leaveEmpSelectDiv').style.display = 'none';
+                document.getElementById('leaveTableTitle').innerText = 'My Leave History';
+            } else if (role === 'Manager') {
+                const restrictedPages = ['employees.html', 'payroll.html'];
+                if (restrictedPages.includes(currentPageName)) window.location.href = 'index.html';
+                loadEmployeesForDropdown();
+            } else {
+                // Boss
+                loadEmployeesForDropdown();
+            }
+
+            loadLeaves();
+        });
+
+        function logout() { localStorage.clear(); window.location.href = 'login.html'; }
+
+        // --- 2. LEAVES SYSTEM LOGIC ---
+        const LEAVES_API_URL = 'http://localhost:8080/leaves';
+        const EMP_API_URL = 'http://localhost:8080/employees';
+
+        async function loadEmployeesForDropdown() {
+            try {
+                const response = await fetch(EMP_API_URL);
+                const employees = await response.json();
+                const selectElement = document.getElementById('leaveEmpSelect');
+                selectElement.innerHTML = '<option value="" selected disabled>Select Employee...</option>';
+                employees.forEach(emp => {
+                    selectElement.innerHTML += `<option value="${emp.id}">${emp.name}</option>`;
+                });
+            } catch (error) { console.error("Error:", error); }
+        }
+
+        async function loadLeaves() {
+            try {
+                const response = await fetch(LEAVES_API_URL);
+                const leaves = await response.json();
+                const tbody = document.getElementById('leavesTableBody');
+                tbody.innerHTML = ''; 
+
+                leaves.reverse().forEach(leave => {
+                    // FILTER: If employee, only show THEIR leaves
+                    if (role === 'Employee' && leave.employeeId != currentUserId) return;
+
+                    let badgeClass = 'badge-pending';
+                    if (leave.status === 'Approved') badgeClass = 'badge-approved';
+                    if (leave.status === 'Rejected') badgeClass = 'badge-rejected';
+
+                    let actionButtons = '';
+                    if (role !== 'Employee' && leave.status === 'Pending') {
+                        actionButtons = `
+                            <button class="btn btn-sm btn-outline-success border-0 me-1" title="Approve" onclick="updateLeaveStatus(${leave.id}, 'Approved')">
+                                <i class="fa-solid fa-check fs-5"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger border-0" title="Reject" onclick="updateLeaveStatus(${leave.id}, 'Rejected')">
+                                <i class="fa-solid fa-xmark fs-5"></i>
+                            </button>
+                        `;
+                    } else if (role !== 'Employee') {
+                        actionButtons = `<span class="text-muted" style="font-size: 0.85rem;">Action Taken</span>`;
+                    }
+                    
+                    const actionCell = role === 'Employee' ? '' : `<td class="text-center action-btns">${actionButtons}</td>`;
+
+                    const row = `
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(leave.employeeName)}&background=random" class="rounded-circle me-2" width="35">
+                                    <strong>${leave.employeeName}</strong>
+                                </div>
+                            </td>
+                            <td>${leave.leaveType}</td>
+                            <td>${leave.startDate} to ${leave.endDate}</td>
+                            <td><span class="badge ${badgeClass}">${leave.status}</span></td>
+                            ${actionCell}
+                        </tr>
+                    `;
+                    tbody.innerHTML += row;
+                });
+            } catch (error) { console.error("Error:", error); }
+        }
+
+        document.getElementById('submitLeaveBtn').addEventListener('click', async () => {
+            const typeSelect = document.getElementById('leaveTypeSelect').value;
+            const startDate = document.getElementById('leaveStartDate').value;
+            const endDate = document.getElementById('leaveEndDate').value;
+
+            if (!typeSelect || !startDate || !endDate) { alert("Please fill all fields!"); return; }
+
+            // Smart Assignment: Use memory if Employee, use dropdown if Admin
+            const empId = role === 'Employee' ? currentUserId : document.getElementById('leaveEmpSelect').value;
+            let empName = currentUserName;
+            
+            if (role !== 'Employee') {
+                const selectElement = document.getElementById('leaveEmpSelect');
+                if (!empId) { alert("Select an employee!"); return; }
+                empName = selectElement.options[selectElement.selectedIndex].text;
+            }
+
+            const leaveData = { employeeId: empId, employeeName: empName, leaveType: typeSelect, startDate: startDate, endDate: endDate };
+
+            try {
+                const response = await fetch(`${LEAVES_API_URL}/apply`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(leaveData)
+                });
+                if (response.ok) {
+                    bootstrap.Modal.getInstance(document.getElementById('applyLeaveModal')).hide();
+                    document.getElementById('applyLeaveForm').reset();
+                    loadLeaves(); 
+                }
+            } catch (error) { console.error("Error:", error); }
+        });
+
+        async function updateLeaveStatus(id, newStatus) {
+            if (confirm(`Mark this request as ${newStatus}?`)) {
+                try {
+                    const response = await fetch(`${LEAVES_API_URL}/${id}/status?status=${newStatus}`, { method: 'PUT' });
+                    if (response.ok) loadLeaves(); 
+                } catch (error) { console.error("Error:", error); }
+            }
+        }
+    </script>
+</body>
+</html>

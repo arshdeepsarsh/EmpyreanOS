@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Workspace - EmpyreanOS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f9; }
+        .sidebar { min-height: 100vh; background-color: #343a40; color: white; width: 250px; position: fixed; }
+        .sidebar a { color: #c2c7d0; text-decoration: none; padding: 12px 20px; display: block; transition: 0.3s; border-radius: 0 25px 25px 0; margin-right: 10px; }
+        .sidebar a:hover, .sidebar a.active { background-color: #494e53; color: white; }
+        .main-content { margin-left: 250px; padding: 20px; width: calc(100% - 250px); }
+        
+        .workspace-card { background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: none; min-height: 60vh; }
+        .nav-tabs .nav-link { color: #495057; font-weight: 600; padding: 12px 25px; border: none; border-bottom: 3px solid transparent; }
+        .nav-tabs .nav-link.active { color: #0d6efd; background: transparent; border-bottom: 3px solid #0d6efd; }
+        .nav-tabs { border-bottom: 2px solid #dee2e6; margin-bottom: 25px; }
+        
+        .asset-icon { font-size: 2.5rem; color: #6c757d; }
+        .doc-card { border: 1px solid #e9ecef; border-radius: 8px; padding: 15px; transition: 0.2s; }
+        .doc-card:hover { border-color: #0d6efd; background-color: #f8f9fa; }
+        
+        .tax-summary-box { background: linear-gradient(135deg, #0d6efd 0%, #0056b3 100%); color: white; border-radius: 12px; padding: 25px; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar d-flex flex-column">
+        <h4 class="text-center py-4 border-bottom border-secondary" style="font-weight: 800; letter-spacing: 1px;">Empyrean<span class="text-info">OS</span></h4>
+        <nav class="mt-2" id="dynamicSidebarMenu"></nav>
+        <a href="#" onclick="logout()" class="text-danger mt-auto p-3 text-decoration-none fw-bold border-top border-secondary">
+            <i class="fa-solid fa-right-from-bracket me-2"></i> Secure Logout
+        </a>
+    </div>
+
+    <div class="main-content">
+        <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm mb-4 rounded">
+            <div class="container-fluid">
+                <span class="navbar-brand mb-0 h1">My Workspace</span>
+                <div class="d-flex align-items-center">
+                    <div class="position-relative me-4" style="cursor: pointer;">
+                        <i class="fa-solid fa-bell fs-5 text-secondary"></i>
+                    </div>
+                    <div class="dropdown">
+                        <a href="#" class="d-flex align-items-center text-decoration-none text-dark">
+                            <img src="" id="navAvatar" width="40" height="40" class="rounded-circle me-2">
+                            <strong id="navUserName">Loading...</strong>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <div class="workspace-card">
+            <ul class="nav nav-tabs" id="workspaceTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#assets-tab" type="button"><i class="fa-solid fa-laptop me-2"></i> My Assets</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#docs-tab" type="button"><i class="fa-solid fa-vault me-2"></i> Document Vault</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tax-tab" type="button"><i class="fa-solid fa-calculator me-2"></i> Smart Tax Planner</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#expense-tab" type="button"><i class="fa-solid fa-receipt me-2"></i> Reimbursements</button>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="workspaceTabsContent">
+                
+                <div class="tab-pane fade show active" id="assets-tab">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5>Assigned Hardware</h5>
+                        <button class="btn btn-outline-danger btn-sm"><i class="fa-solid fa-triangle-exclamation me-1"></i> Report Damage</button>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Asset Type</th>
+                                    <th>Model / Description</th>
+                                    <th>Serial Number</th>
+                                    <th>Assigned Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="docs-tab">
+                    <h5 class="mb-4">Secure HR Documents</h5>
+                    <div class="row g-3">
+                        </div>
+                </div>
+
+                <div class="tab-pane fade" id="tax-tab">
+                    <div class="row">
+                        <div class="col-md-5">
+                            <h5 class="mb-3">Income & Deductions</h5>
+                            <form id="taxCalculatorForm">
+                                <div class="mb-3">
+                                    <label class="form-label">Annual Base Salary ($)</label>
+                                    <input type="number" class="form-control form-control-lg" id="calcSalary" value="60000" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Annual Bonus ($)</label>
+                                    <input type="number" class="form-control" id="calcBonus" value="5000">
+                                </div>
+                                <div class="mb-4">
+                                    <label class="form-label text-success">Total Tax-Free Investments ($)</label>
+                                    <input type="number" class="form-control" id="calcInvestments" value="2000">
+                                    <small class="text-muted">e.g. 401k, Health Insurance, 80C</small>
+                                </div>
+                                <button type="button" class="btn btn-dark w-100 py-2" onclick="calculateTax()">Calculate My Take-Home</button>
+                            </form>
+                        </div>
+                        <div class="col-md-1"></div>
+                        <div class="col-md-6">
+                            <div class="tax-summary-box">
+                                <h5 class="text-white opacity-75 mb-4">Estimated Yearly Projection</h5>
+                                
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Gross Income:</span>
+                                    <strong id="resGross">$65,000</strong>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2 text-warning">
+                                    <span>Taxable Income (After Investments):</span>
+                                    <strong id="resTaxable">$63,000</strong>
+                                </div>
+                                <div class="d-flex justify-content-between mb-4 text-danger border-bottom border-light pb-3">
+                                    <span>Estimated Income Tax:</span>
+                                    <strong id="resTax">-$9,450</strong>
+                                </div>
+                                
+                                <p class="mb-0 opacity-75" style="font-size: 0.85rem;">Estimated Net Take-Home (Yearly)</p>
+                                <h1 class="display-4 fw-bold" id="resNet">$53,550</h1>
+                                
+                                <div class="mt-4 pt-3 border-top border-light d-flex justify-content-between align-items-center">
+                                    <span class="opacity-75">Estimated Monthly Payout:</span>
+                                    <h4 class="mb-0" id="resMonthly">$4,462</h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="expense-tab">
+                    <div class="row">
+                        <div class="col-md-5 border-end pe-4">
+                            <h5 class="mb-3">Submit New Expense</h5>
+                            <form id="expenseForm">
+                                <div class="mb-3">
+                                    <label class="form-label">Description / Reason</label>
+                                    <input type="text" class="form-control" id="expDesc" placeholder="e.g., Client Lunch with Acme Corp" required>
+                                </div>
+                                <div class="mb-4">
+                                    <label class="form-label">Amount ($)</label>
+                                    <input type="number" step="0.01" class="form-control" id="expAmount" placeholder="0.00" required>
+                                </div>
+                                <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-paper-plane me-2"></i> Send for Approval</button>
+                            </form>
+                        </div>
+                        <div class="col-md-7 ps-4">
+                            <h5 class="mb-3">My Claim History</h5>
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle text-center">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Description</th>
+                                            <th>Amount</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="myExpenseHistory">
+                                        <tr><td colspan="4" class="text-muted py-3">Loading history...</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        if (localStorage.getItem('isLoggedIn') !== 'true') window.location.href = 'login.html';
+        const role = localStorage.getItem('userRole');
+        const currentUserName = localStorage.getItem('currentUserName');
+
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('navUserName').innerText = currentUserName;
+            document.getElementById('navAvatar').src = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUserName)}&background=0D8ABC&color=fff`;
+
+            // --- THE DYNAMIC SIDEBAR ENGINE ---
+            const sidebarMenu = document.getElementById('dynamicSidebarMenu');
+            let menuHtml = '';
+
+            menuHtml += `<p class="text-secondary ms-3 mb-1 mt-2" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">MAIN</p>`;
+            menuHtml += `<a href="index.html" class="text-white text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-house fa-fw me-2"></i> Dashboard</a>`;
+            menuHtml += `<a href="attendance.html" class="text-white text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-clock fa-fw me-2"></i> Time & Attendance</a>`;
+            menuHtml += `<a href="leaves.html" class="text-white text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-plane-departure fa-fw me-2"></i> Leave Management</a>`;
+            menuHtml += `<a href="calendar.html" class="text-white text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-calendar-days fa-fw me-2"></i> Calendar</a>`;
+            menuHtml += `<a href="chat.html" class="text-white text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-comments fa-fw me-2"></i> Communications</a>`;
+            
+            if (role === 'Employee' || role === 'Manager') {
+                menuHtml += `<p class="text-secondary ms-3 mb-1 mt-3" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">MY WORKSPACE</p>`;
+                menuHtml += `<a href="workspace.html" class="text-white text-decoration-none p-2 ps-3 d-block" style="background-color: #494e53;"><i class="fa-solid fa-laptop-code fa-fw me-2"></i> My Workspace</a>`;
+                menuHtml += `<a href="#" class="text-white text-decoration-none p-2 ps-3 d-block text-muted" style="cursor: not-allowed;"><i class="fa-solid fa-bullseye fa-fw me-2"></i> My OKRs (Soon)</a>`;
+            }
+
+            if (role === 'Manager') {
+                menuHtml += `<p class="text-secondary ms-3 mb-1 mt-3" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">TEAM MANAGEMENT</p>`;
+                menuHtml += `<a href="team.html" class="text-white text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-users-viewfinder fa-fw me-2"></i> Team Hub</a>`;
+                menuHtml += `<a href="reports.html" class="text-white text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-chart-pie fa-fw me-2"></i> Team Reports</a>`;
+            }
+
+            if (role === 'Boss') {
+                menuHtml += `<p class="text-secondary ms-3 mb-1 mt-3" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">OPERATIONS</p>`;
+                menuHtml += `<a href="employees.html" class="text-white text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-users-gear fa-fw me-2"></i> Directory & Access</a>`;
+                menuHtml += `<a href="payroll.html" class="text-white text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-money-check-dollar fa-fw me-2"></i> Payroll & Finance</a>`;
+                
+                menuHtml += `<p class="text-secondary ms-3 mb-1 mt-3" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">GOD MODE</p>`;
+                menuHtml += `<a href="reports.html" class="text-white text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-chart-line fa-fw me-2"></i> Company Analytics</a>`;
+            }
+
+            menuHtml += `<p class="text-secondary ms-3 mb-1 mt-3" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">SYSTEM</p>`;
+            menuHtml += `<a href="settings.html" class="text-white text-decoration-none p-2 ps-3 d-block"><i class="fa-solid fa-gear fa-fw me-2"></i> Settings</a>`;
+
+            sidebarMenu.innerHTML = menuHtml;
+
+            // Security logic
+            if (role === 'Boss') {
+                alert("Boss, you don't have a personal workspace because you run the company! Go to your Operations tabs.");
+                window.location.href = 'index.html';
+            }
+
+            // Load all dynamic data
+            calculateTax();
+            loadMyAssets();
+            loadMyDocuments();
+            loadMyExpenses(); // Load expense history on page load
+        });
+
+        function logout() { localStorage.clear(); window.location.href = 'login.html'; }
+
+        // --- 1. ASSETS ---
+        async function loadMyAssets() {
+            try {
+                const res = await fetch(`http://localhost:8080/workspace/assets/${encodeURIComponent(currentUserName)}`);
+                const assets = await res.json();
+                const tbody = document.querySelector('#assets-tab tbody');
+                tbody.innerHTML = ''; 
+
+                if (assets.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">No hardware assigned to you yet.</td></tr>`;
+                    return;
+                }
+
+                assets.forEach(asset => {
+                    const icon = asset.type.toLowerCase().includes('laptop') ? 'fa-laptop' : 
+                                 asset.type.toLowerCase().includes('desktop') ? 'fa-desktop' : 'fa-mobile-screen';
+                    
+                    tbody.innerHTML += `
+                        <tr>
+                            <td><i class="fa-solid ${icon} asset-icon fs-4 text-primary"></i></td>
+                            <td><strong>${asset.model}</strong><br><small class="text-muted">${asset.type}</small></td>
+                            <td><span class="badge bg-light text-dark border">${asset.serialNumber}</span></td>
+                            <td>${asset.assignedDate}</td>
+                            <td><span class="badge bg-success">${asset.status}</span></td>
+                        </tr>
+                    `;
+                });
+            } catch (error) { console.error("Could not load assets:", error); }
+        }
+
+        // --- 2. DOCUMENTS ---
+        async function loadMyDocuments() {
+            try {
+                const res = await fetch(`http://localhost:8080/workspace/docs/${encodeURIComponent(currentUserName)}`);
+                const docs = await res.json();
+                const docContainer = document.querySelector('#docs-tab .row');
+                docContainer.innerHTML = ''; 
+
+                if (docs.length === 0) {
+                    docContainer.innerHTML = `<div class="col-12 text-center text-muted py-4">Your document vault is currently empty.</div>`;
+                    return;
+                }
+
+                docs.forEach(doc => {
+                    const colorClass = doc.id % 2 === 0 ? 'text-danger' : 'text-primary';
+                    docContainer.innerHTML += `
+                        <div class="col-md-4">
+                            <div class="doc-card d-flex align-items-center cursor-pointer" onclick="alert('Downloading ${doc.title}...')">
+                                <i class="fa-solid fa-file-pdf fs-1 ${colorClass} me-3"></i>
+                                <div>
+                                    <h6 class="mb-1">${doc.title}</h6>
+                                    <small class="text-muted">Added: ${doc.addedDate}</small>
+                                </div>
+                                <i class="fa-solid fa-download ms-auto text-secondary"></i>
+                            </div>
+                        </div>
+                    `;
+                });
+            } catch (error) { console.error("Could not load docs:", error); }
+        }
+
+        // --- 3. EXPENSES ---
+        async function loadMyExpenses() {
+            try {
+                const res = await fetch(`http://localhost:8080/workspace/expenses/${encodeURIComponent(currentUserName)}`);
+                const expenses = await res.json();
+                const tbody = document.getElementById('myExpenseHistory');
+                tbody.innerHTML = '';
+
+                if(expenses.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="4" class="text-muted py-3">No expenses claimed yet.</td></tr>`;
+                    return;
+                }
+
+                expenses.forEach(exp => {
+                    let badgeColor = exp.status === 'Approved' ? 'bg-success' : exp.status === 'Rejected' ? 'bg-danger' : 'bg-warning text-dark';
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${exp.dateSubmitted}</td>
+                            <td>${exp.description}</td>
+                            <td><strong>$${exp.amount.toFixed(2)}</strong></td>
+                            <td><span class="badge ${badgeColor}">${exp.status}</span></td>
+                        </tr>
+                    `;
+                });
+            } catch(e) { console.error(e); }
+        }
+
+        document.getElementById('expenseForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                employeeName: currentUserName,
+                description: document.getElementById('expDesc').value,
+                amount: parseFloat(document.getElementById('expAmount').value)
+            };
+
+            try {
+                const res = await fetch('http://localhost:8080/workspace/expenses', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                if (res.ok) {
+                    alert("Expense submitted to Manager successfully!");
+                    document.getElementById('expenseForm').reset();
+                    loadMyExpenses(); 
+                }
+            } catch(e) { alert("Failed to submit expense."); }
+        });
+
+        // --- 4. TAX CALCULATOR ---
+        function calculateTax() {
+            const salary = parseFloat(document.getElementById('calcSalary').value) || 0;
+            const bonus = parseFloat(document.getElementById('calcBonus').value) || 0;
+            const investments = parseFloat(document.getElementById('calcInvestments').value) || 0;
+
+            const gross = salary + bonus;
+            const taxable = Math.max(0, gross - investments);
+
+            let tax = 0;
+            if (taxable > 150000) tax = (taxable * 0.30);
+            else if (taxable > 100000) tax = (taxable * 0.25);
+            else if (taxable > 60000) tax = (taxable * 0.20);
+            else if (taxable > 40000) tax = (taxable * 0.15);
+            else if (taxable > 20000) tax = (taxable * 0.10);
+
+            const format = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+
+            document.getElementById('resGross').innerText = format(gross);
+            document.getElementById('resTaxable').innerText = format(taxable);
+            document.getElementById('resTax').innerText = `-${format(tax)}`;
+            document.getElementById('resNet').innerText = format(gross - tax);
+            document.getElementById('resMonthly').innerText = format((gross - tax) / 12);
+        }
+    </script>
+</body>
+</html>
