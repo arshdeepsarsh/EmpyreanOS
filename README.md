@@ -1,4 +1,4 @@
-# ⚡ EmpyreanOS — AI-Powered Enterprise Operating System
+# ⚡ EmpyreanOS — The Intelligent Core for the Connected Enterprise.
 
 ![Java](https://img.shields.io/badge/Java-17%2B-orange?logo=java)
 ![Spring Boot](https://img.shields.io/badge/SpringBoot-3.3-brightgreen?logo=springboot)
