@@ -18,7 +18,7 @@ EmpyreanOS is a full-stack, enterprise-grade Business Operating System that allo
 - Ensure financial safety with Idempotent transaction pipelines  
 - Generate dynamic PDF corporate documents instantly  
 
-Built with a Java Spring Boot backend, Vanilla JS frontend, MySQL, and Google Gemini AI.
+Built with a Java Spring Boot backend, Vanilla JS frontend, MySQL, VS-code, and Postman.
 
 ---
 
