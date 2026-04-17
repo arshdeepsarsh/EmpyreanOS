@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leave Management — EmpyreanOS</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-logo">E</div>
+    <div class="brand-name">Empyrean<span>OS</span></div>
+  </div>
+  <nav class="sidebar-nav" id="sidebarNav"></nav>
+  <div class="sidebar-footer">
+    <button class="nav-link" style="color: #ff7b7b;" onclick="logout()">
+      <i class="fa-solid fa-right-from-bracket fa-fw"></i>
+      <span>Sign Out</span>
+    </button>
+  </div>
+</div>
+
+<div class="sub-sidebar" id="subSidebar"></div>
+
+<div class="main-content" id="mainContent">
+  <div class="topbar">
+    <div class="topbar-title" id="pageTitle">Leave Management</div>
+    <div class="topbar-actions">
+      <button id="applyLeaveBtn" class="btn btn-primary" onclick="openModal('applyModal')">
+        <i class="fa-solid fa-plus"></i> Apply for Leave
+      </button>
+      <img id="topbarAvatar" class="avatar" width="34" height="34">
+      <span id="topbarUserName" style="font-size:13.5px; font-weight:500; color:var(--text-primary);"></span>
+    </div>
+  </div>
+
+  <div class="page-body">
+
+    <div id="empSummaryStats" class="stat-row" style="margin-bottom:24px;">
+      <div class="stat-card">
+        <div class="stat-icon indigo"><i class="fa-solid fa-layer-group"></i></div>
+        <div class="stat-info"><h3 id="sTotal">—</h3><p>Total Applied</p></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green"><i class="fa-solid fa-circle-check"></i></div>
+        <div class="stat-info"><h3 id="sApproved">—</h3><p>Approved</p></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon yellow"><i class="fa-solid fa-hourglass-half"></i></div>
+        <div class="stat-info"><h3 id="sPending">—</h3><p>Pending</p></div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon red"><i class="fa-solid fa-circle-xmark"></i></div>
+        <div class="stat-info"><h3 id="sRejected">—</h3><p>Rejected</p></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h6 id="mainTableTitle"><i class="fa-solid fa-list text-indigo me-2"></i>Leave Records</h6>
+        <div style="display:flex; gap:12px;">
+          <input type="month" class="form-control form-control-sm" id="monthFilter" style="width:160px; font-size: 13px;" onchange="filterTable()">
+          
+          <select class="form-control form-select" id="statusFilter" style="width:140px; font-size: 13px;" onchange="filterTable()">
+            <option value="">All Status</option>
+            <option value="Pending">Pending</option>
+            <option value="Approved">Approved</option>
+            <option value="Rejected">Rejected</option>
+          </select>
+          <select class="form-control form-select" id="typeFilter" style="width:160px; font-size: 13px;" onchange="filterTable()">
+            <option value="">All Types</option>
+            <option value="Sick Leave">Sick Leave</option>
+            <option value="Casual Leave">Casual Leave</option>
+            <option value="Earned Leave">Earned Leave</option>
+            <option value="Unpaid Leave">Unpaid Leave</option>
+            <option value="Comp Off">Comp Off</option>
+          </select>
+        </div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="table align-middle">
+          <thead>
+            <tr>
+              <th id="empColHead">Employee</th>
+              <th>Leave Type</th>
+              <th>From</th>
+              <th>To</th>
+              <th>Days</th>
+              <th>Reason</th>
+              <th>Status</th>
+              <th id="actionColHead" class="text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="mainLeaveBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="modal-backdrop" id="applyModal">
+  <div class="modal-box" style="width: 500px;">
+    <div class="modal-header">
+      <h5>Apply for Leave</h5>
+      <button class="modal-close" onclick="closeModal('applyModal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      <div id="bossEmpSelectWrapper" style="display:none;" class="form-group mb-3">
+        <label class="form-label">Employee</label>
+        <select class="form-control form-select" id="applyEmpSelect">
+          <option value="" disabled selected>Choose employee...</option>
+        </select>
+      </div>
+      <div class="form-group mb-3">
+        <label class="form-label">Leave Type</label>
+        <select class="form-control form-select" id="applyType" required>
+          <option value="" disabled selected>Select type...</option>
+          <option value="Sick Leave">Sick Leave</option>
+          <option value="Casual Leave">Casual Leave</option>
+          <option value="Earned Leave">Earned Leave</option>
+          <option value="Unpaid Leave">Unpaid Leave</option>
+          <option value="Maternity / Paternity Leave">Maternity / Paternity</option>
+          <option value="Comp Off">Comp Off</option>
+        </select>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;" class="form-group mb-3">
+        <div>
+          <label class="form-label">Start Date</label>
+          <input type="date" class="form-control" id="applyStart" required>
+        </div>
+        <div>
+          <label class="form-label">End Date</label>
+          <input type="date" class="form-control" id="applyEnd" required>
+        </div>
+      </div>
+      <div class="form-group mb-0">
+        <label class="form-label">Reason</label>
+        <textarea class="form-control" id="applyReason" rows="3" placeholder="Brief reason..." required></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('applyModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitLeave()">Submit Request</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="sidebar.js"></script>
+<script>
+  const LEAVES = 'http://localhost:8080/leaves';
+  const EMP = 'http://localhost:8080/employees';
+  const role = localStorage.getItem('userRole');
+  const userId = parseInt(localStorage.getItem('currentUserId'));
+  const userName = localStorage.getItem('currentUserName') || '';
+
+  let allLeaves = [];
+  let isViewingMine = false;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    SidebarBuilder.init();
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const viewMode = urlParams.get('view');
+
+    // 1. DYNAMIC APPLY BUTTON LOGIC
+    // Hide button if Boss OR if looking at "All Leaves"
+    if (role === 'Boss' || viewMode !== 'mine') {
+      document.getElementById('applyLeaveBtn').style.display = 'none';
+    }
+
+    if (role === 'Employee' || viewMode === 'mine') {
+      isViewingMine = true;
+      document.getElementById('pageTitle').textContent = 'My Leaves';
+      document.getElementById('mainTableTitle').innerHTML = '<i class="fa-solid fa-user-clock text-indigo me-2"></i>My Leave History';
+      document.getElementById('empColHead').style.display = 'none';
+      if (role === 'Employee') {
+        document.getElementById('actionColHead').style.display = 'none';
+      }
+    } else {
+      document.getElementById('pageTitle').textContent = 'All Leave Requests';
+      document.getElementById('mainTableTitle').innerHTML = '<i class="fa-solid fa-list text-indigo me-2"></i>Company Leave Records';
+      loadEmployeeDropdowns();
+    }
+
+    document.getElementById('monthFilter').value = new Date().toISOString().substring(0, 7);
+    loadAllLeaves();
+  });
+
+  async function loadAllLeaves() {
+    try {
+      const res = await fetch(LEAVES);
+      allLeaves = await res.json();
+      filterTable();
+    } catch (e) { console.error(e); }
+  }
+
+  function filterTable() {
+    const status = document.getElementById('statusFilter').value;
+    const type = document.getElementById('typeFilter').value;
+    const targetMonth = document.getElementById('monthFilter').value; 
+    
+    let list = isViewingMine ? allLeaves.filter(l => String(l.employeeId) === String(userId)) : [...allLeaves];
+    
+    if (targetMonth) {
+        list = list.filter(l => l.startDate && l.startDate.substring(0, 7) === targetMonth);
+    }
+
+    let monthStatsList = isViewingMine ? allLeaves.filter(l => String(l.employeeId) === String(userId)) : [...allLeaves];
+    if (targetMonth) {
+        monthStatsList = monthStatsList.filter(l => l.startDate && l.startDate.substring(0, 7) === targetMonth);
+    }
+    updateSummaryStats(monthStatsList);
+
+    if (status) list = list.filter(l => l.status === status);
+    if (type) list = list.filter(l => l.leaveType === type);
+    
+    renderMainTable(list);
+  }
+
+  function renderMainTable(leaves) {
+    const tbody = document.getElementById('mainLeaveBody');
+    tbody.innerHTML = '';
+    
+    if (leaves.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted py-5">No leave records found matching filters.</td></tr>`;
+      return;
+    }
+
+    leaves.forEach(l => {
+      // 2. MANAGER SELF-APPROVAL GUARD
+      // Managers can act only if the record is NOT theirs. Boss can act on everyone.
+      let canAct = role !== 'Employee' && !isViewingMine && l.status === 'Pending';
+      
+      if (role === 'Manager' && l.employeeName === userName) {
+          canAct = false;
+      }
+
+      const days = calcDays(l.startDate, l.endDate);
+      const badge = leaveBadge(l.status);
+      const typeBadge = `<span class="badge badge-gray" style="border: 1px solid var(--border);">${l.leaveType}</span>`;
+      
+      let actions = '';
+      if (canAct) {
+        actions = `<div style="display:flex; gap:6px; justify-content:center;">
+                      <button class="btn btn-sm btn-outline" title="Reject" style="color: var(--red); border-color: var(--red-light); padding: 6px 10px;" onclick="updateLeaveStatus(${l.id}, 'Rejected')"><i class="fa-solid fa-xmark"></i></button>
+                      <button class="btn btn-sm btn-green" title="Approve" style="padding: 6px 10px;" onclick="updateLeaveStatus(${l.id}, 'Approved')"><i class="fa-solid fa-check"></i></button>
+                    </div>`;
+      } else if (role === 'Manager' && l.employeeName === userName && l.status === 'Pending') {
+        actions = `<span class="text-muted" style="font-size:11px; font-style: italic;">Awaiting Boss Approval</span>`;
+      } else if (role !== 'Employee' && !isViewingMine) {
+        actions = `<span style="color:var(--text-muted); font-size:12px;">Resolved</span>`;
+      }
+
+      let empCell = '';
+      if (!isViewingMine) {
+        empCell = `
+          <td>
+            <div class="user-chip">
+              <img src="${avatarUrl(l.employeeName)}" class="avatar" width="32" height="32">
+              <div class="user-chip-name">${l.employeeName}</div>
+            </div>
+          </td>
+        `;
+      }
+
+      let actionCell = '';
+      if (role !== 'Employee' || !isViewingMine) {
+         actionCell = `<td class="text-center">${actions}</td>`;
+      }
+
+      const rowHtml = `<tr>
+        ${empCell}
+        <td>${typeBadge}</td>
+        <td>${formatDate(l.startDate)}</td>
+        <td>${formatDate(l.endDate)}</td>
+        <td style="color:var(--text-secondary); font-weight: 500;">${days}d</td>
+        <td style="font-size:13px; color:var(--text-secondary); max-width:180px;">${l.reason || '—'}</td>
+        <td>${badge}</td>
+        ${actionCell}
+      </tr>`;
+      
+      tbody.innerHTML += rowHtml;
+    });
+  }
+
+  function calcDays(start, end) {
+    if (!start || !end) return '—';
+    const s = new Date(start);
+    const e = new Date(end);
+    return Math.round((e - s) / 86400000) + 1;
+  }
+
+  function leaveBadge(status) {
+    const map = { 'Approved': 'badge-green', 'Rejected': 'badge-red', 'Pending': 'badge-yellow' };
+    return `<span class="badge ${map[status] || 'badge-gray'}">${status}</span>`;
+  }
+
+  function updateSummaryStats(leaves) {
+    document.getElementById('sTotal').textContent = leaves.length;
+    document.getElementById('sApproved').textContent = leaves.filter(l => l.status === 'Approved').length;
+    document.getElementById('sPending').textContent = leaves.filter(l => l.status === 'Pending').length;
+    document.getElementById('sRejected').textContent = leaves.filter(l => l.status === 'Rejected').length;
+  }
+
+  async function updateLeaveStatus(id, newStatus) {
+    if (!confirm(`Mark as ${newStatus}?`)) return;
+    try {
+      await fetch(`${LEAVES}/${id}/status?status=${newStatus}`, { method: 'PUT' });
+      loadAllLeaves();
+    } catch (e) { alert("Failed to update status."); }
+  }
+
+  async function loadEmployeeDropdowns() {
+    const res = await fetch(EMP);
+    const emps = await res.json();
+    const staff = emps.filter(e => e.role !== 'Boss');
+    const applySelect = document.getElementById('applyEmpSelect');
+    
+    document.getElementById('bossEmpSelectWrapper').style.display = 'block';
+    staff.forEach(emp => {
+      applySelect.innerHTML += `<option value="${emp.id}" data-name="${emp.name}">${emp.name}</option>`;
+    });
+  }
+
+  async function submitLeave() {
+    const type = document.getElementById('applyType').value;
+    const start = document.getElementById('applyStart').value;
+    const end = document.getElementById('applyEnd').value;
+    const reason = document.getElementById('applyReason').value;
+
+    if (!type || !start || !end || !reason) {
+      alert('Please fill all fields.');
+      return;
+    }
+
+    let empId = userId;
+    let empName = userName;
+
+    if (role !== 'Employee' && document.getElementById('bossEmpSelectWrapper').style.display !== 'none' && document.getElementById('applyEmpSelect').value) {
+      const sel = document.getElementById('applyEmpSelect');
+      empId = sel.value;
+      empName = sel.options[sel.selectedIndex].dataset.name;
+    }
+
+    try {
+      await fetch(`${LEAVES}/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employeeId: empId, employeeName: empName, leaveType: type, startDate: start, endDate: end, reason })
+      });
+
+      closeModal('applyModal');
+      document.getElementById('applyType').value = '';
+      document.getElementById('applyStart').value = '';
+      document.getElementById('applyEnd').value = '';
+      document.getElementById('applyReason').value = '';
+      loadAllLeaves();
+    } catch (e) { alert("Failed to submit request."); }
+  }
+</script>
+</body>
+</html>

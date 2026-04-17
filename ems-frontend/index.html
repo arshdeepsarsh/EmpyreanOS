@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — EmpyreanOS</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    /* FAANG Custom Widgets CSS */
+    .blur-reveal {
+      filter: blur(8px);
+      transition: filter 0.3s ease;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .blur-reveal:hover {
+      filter: blur(0);
+    }
+
+    .buzz-marquee {
+      overflow: hidden;
+      white-space: nowrap;
+      box-sizing: border-box;
+      animation: marquee 25s linear infinite;
+      display: inline-block;
+      padding-left: 100%;
+    }
+
+    @keyframes marquee {
+      0% {
+        transform: translate(0, 0);
+      }
+
+      100% {
+        transform: translate(-100%, 0);
+      }
+    }
+
+    .joinee-card {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      text-align: center;
+      min-width: 110px;
+      transition: transform 0.2s;
+      background: var(--surface);
+    }
+
+    .joinee-card:hover {
+      transform: translateY(-3px);
+      border-color: var(--indigo-500);
+    }
+  </style>
+</head>
+
+<body>
+
+  <div
+    style="background: linear-gradient(90deg, var(--indigo-900), var(--indigo-700)); color: white; padding: 8px 24px; font-size: 12.5px; font-weight: 500; display: flex; align-items: center; overflow: hidden; border-bottom: 1px solid rgba(255,255,255,0.1);">
+    <i class="fa-solid fa-bolt me-3 text-yellow"></i>
+    
+    <button id="editBuzzBtn" onclick="editCompanyBuzz()" style="display:none; background:rgba(255,255,255,0.2); border:none; color:white; border-radius:4px; padding:2px 8px; font-size:10px; margin-right:12px; cursor:pointer;">
+      <i class="fa-solid fa-pen"></i> EDIT
+    </button>
+
+    <div style="flex: 1; overflow: hidden; position: relative; height: 18px;">
+      <span class="buzz-marquee" id="dynamicBuzzText">📢 Global Town Hall today at 4 PM IST &bull; 🍕 Free Pizza in the Cafeteria &bull; 🚀
+        EmpyreanOS v2.0 Launch Next Week! &bull; 🎉 Welcome to our new hires!</span>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo">E</div>
+      <div class="brand-name">Empyrean<span>OS</span></div>
+    </div>
+    <nav class="sidebar-nav" id="sidebarNav"></nav>
+    <div class="sidebar-footer">
+      <button class="nav-link" style="color: #ff7b7b;" onclick="logout()">
+        <i class="fa-solid fa-right-from-bracket fa-fw"></i>
+        <span>Sign Out</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="sub-sidebar" id="subSidebar"></div>
+
+  <div class="main-content" id="mainContent">
+    <div class="topbar">
+      <div class="topbar-title">Dashboard</div>
+      <div class="topbar-actions">
+        <button id="exportBtn" class="btn btn-outline" style="display:none; padding: 8px 16px;" onclick="exportExcel()">
+          <i class="fa-solid fa-file-excel me-2"></i> Export Master Excel
+        </button>
+        <img id="topbarAvatar" class="avatar" width="34" height="34">
+        <span id="topbarUserName" style="font-size:13.5px; font-weight:500; color:var(--text-primary);"></span>
+      </div>
+    </div>
+
+    <div class="page-body">
+
+      <div id="dynamicGreetingRow" style="display:none; margin-bottom: 24px;">
+        <h4 id="dynamicGreetingText" style="font-family: var(--font-main); font-weight: 600; color: var(--text-primary);"></h4>
+        <p class="text-muted" style="font-size: 14px; margin-bottom: 0;">Here's an overview of your organization today.</p>
+      </div>
+
+      <div class="stat-row" id="adminStatsRow" style="margin-bottom:24px; display:none;">
+        <div class="stat-card">
+          <div class="stat-icon indigo"><i class="fa-solid fa-users"></i></div>
+          <div class="stat-info">
+            <h3 id="statTotal">—</h3>
+            <p>Total Staff</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon green"><i class="fa-solid fa-user-check"></i></div>
+          <div class="stat-info">
+            <h3 id="statPresent">—</h3>
+            <p>Present Today</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon red"><i class="fa-solid fa-user-xmark"></i></div>
+          <div class="stat-info">
+            <h3 id="statAbsent">—</h3>
+            <p>Absent Today</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon blue"><i class="fa-solid fa-plane-departure"></i></div>
+          <div class="stat-info">
+            <h3 id="statLeave">—</h3>
+            <p>On Leave</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="stat-row" id="empSummaryRow"
+        style="margin-bottom:24px; display:none; grid-template-columns: repeat(3, 1fr);">
+        <div class="stat-card border-0 shadow-sm"
+          style="background: linear-gradient(135deg, #1e8e3e, #137333); color: white;">
+          <div style="width: 100%;">
+            <p class="mb-1" style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.8;"><i
+                class="fa-solid fa-rocket me-2"></i>Active Project</p>
+            <h5 class="mb-3" id="activeProjectName" style="font-weight: 600; font-family: var(--font-main);">Loading...
+            </h5>
+            <div class="progress" style="height: 6px; background: rgba(255,255,255,0.2);">
+              <div class="progress-bar bg-white" id="activeProjectProgress" role="progressbar" style="width: 0%;"></div>
+            </div>
+            <p class="mt-2 mb-0" style="font-size: 11px; text-align: right;" id="activeProjectPercent">0% Complete</p>
+          </div>
+        </div>
+
+        <div class="stat-card border-0 shadow-sm"
+          style="background: linear-gradient(135deg, #f9ab00, #f29900); color: white;">
+          <div style="width: 100%;">
+            <p class="mb-1" style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.8;"><i
+                class="fa-solid fa-umbrella-beach me-2"></i>Next Holiday</p>
+            <h3 class="mb-1" id="nextHolidayDays" style="font-weight: 700; font-family: var(--font-main);">--</h3>
+            <p class="mb-0" id="nextHolidayName" style="font-size: 13px; opacity: 0.9;">Loading calendar...</p>
+          </div>
+        </div>
+
+        <div class="stat-card border-0 shadow-sm"
+          style="background: linear-gradient(135deg, #8430ce, #6f42c1); color: white;">
+          <div style="width: 100%; display: flex; align-items: center; justify-content: space-between;">
+            <div>
+              <p class="mb-1" style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.8;"><i
+                  class="fa-solid fa-users me-2"></i>Team Online</p>
+              <h3 class="mb-1" id="teamOnlineFrac" style="font-weight: 700; font-family: var(--font-main);">--/--</h3>
+              <p class="mb-0" style="font-size: 13px; opacity: 0.9;">Members Available</p>
+            </div>
+            <div class="stat-icon"
+              style="background: rgba(255,255,255,0.2); color: white; width: 50px; height: 50px; border-radius: 50%;"><i
+                class="fa-solid fa-user-group"></i></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:2fr 1fr; gap:24px;">
+
+        <div style="display:flex; flex-direction:column; gap:24px;">
+
+          <div class="card border-0 shadow-sm" id="hiringChartCard">
+            <div class="card-header border-0 bg-transparent pt-4 pb-0">
+              <h6 style="font-weight: 600;">Monthly Hiring Trend</h6>
+            </div>
+            <div class="card-body"><canvas id="hiringChart" height="120"></canvas></div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;" id="employeeWidgetsRow">
+            
+            <div class="card border-0 shadow-sm" id="nextMeetingCard">
+              <div class="card-body text-center p-4">
+                <div
+                  style="width: 48px; height: 48px; background: var(--blue-light); color: var(--blue); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin: 0 auto 16px;">
+                  <i class="fa-solid fa-video"></i>
+                </div>
+                <h6 style="font-family: var(--font-main); font-weight: 600;">Next Meeting</h6>
+                <p class="text-muted mb-3" style="font-size: 13px;" id="nextMeetingTitle">Scanning calendar...</p>
+                <p class="text-primary fw-bold mb-3" id="nextMeetingTime"></p>
+                <button class="btn btn-outline w-100" style="border-radius: 20px; font-size: 13px;"
+                  onclick="window.location.href='calendar.html'"><i class="fa-solid fa-link me-2"></i> View
+                  Calendar</button>
+              </div>
+            </div>
+
+            <div class="card border-0 shadow-sm" id="payslipCard">
+              <div class="card-body text-center p-4">
+                <div
+                  style="width: 48px; height: 48px; background: var(--green-light); color: var(--green); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; margin: 0 auto 16px;">
+                  <i class="fa-solid fa-file-invoice-dollar"></i>
+                </div>
+                <h6 style="font-family: var(--font-main); font-weight: 600;">Latest Payslip</h6>
+                <p class="text-muted mb-2" style="font-size: 13px;" id="payslipMonth">Loading...</p>
+
+                <div
+                  style="background: var(--surface-2); padding: 12px; border-radius: 8px; border: 1px dashed var(--border); margin-bottom: 12px;">
+                  <h3 class="mb-0 blur-reveal" id="payslipAmount"
+                    style="color: var(--text-primary); font-family: var(--font-main); font-weight: 700;"
+                    title="Hover to reveal">***.**</h3>
+                  <small class="text-muted" style="font-size: 10px;">Hover to reveal</small>
+                </div>
+              </div>
+            </div>
+            
+            <div class="card border-0 shadow-sm" id="employeeNotesCard" style="display:none; grid-column: 1 / -1; border-left: 4px solid var(--yellow) !important;">
+              <div class="card-header border-0 bg-transparent pt-4 pb-0">
+                <h6 style="font-weight: 600; color: var(--text-primary);"><i class="fa-solid fa-clipboard-user me-2 text-yellow"></i>My 1:1 Feedback & Notes</h6>
+                <p class="text-muted mb-0" style="font-size: 12px;">Notes shared with you by your Manager or Boss.</p>
+              </div>
+              <div class="card-body" id="employeeNotesList" style="max-height: 250px; overflow-y: auto;">
+                <div class="text-muted text-center" style="font-size:13px;">Checking for notes...</div>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="card border-0 shadow-sm" id="managerNotesCard" style="display:none; border-left: 4px solid var(--indigo-500) !important;">
+            <div class="card-header border-0 bg-transparent pt-4 pb-0 d-flex justify-content-between align-items-center">
+              <h6 style="font-weight: 600; color: var(--indigo-700);"><i class="fa-solid fa-clipboard-user me-2"></i>Recent 1:1 Private Notes</h6>
+              <button class="btn btn-sm btn-outline-light" style="color: var(--indigo-600);" onclick="window.location.href='team.html?tab=notes'">View All</button>
+            </div>
+            <div class="card-body" id="managerNotesList" style="max-height: 300px; overflow-y: auto;">
+              <div class="text-muted text-center" style="font-size:13px;">Loading notes...</div>
+            </div>
+          </div>
+
+          <div class="card border-0 shadow-sm" id="employeeDataCard"
+            style="display:none; border-left: 4px solid var(--red) !important;">
+            <div
+              class="card-header border-0 bg-transparent pt-4 pb-0 d-flex justify-content-between align-items-center">
+              <h6 style="font-weight: 600; color: var(--red);"><i class="fa-solid fa-lock me-2"></i>My Sensitive HR &
+                Payroll Data</h6>
+              <span id="lockedNotice" class="badge badge-gray" style="display:none;"><i
+                  class="fa-solid fa-shield-check me-1"></i> Data Locked</span>
+            </div>
+            <div class="card-body">
+              <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">Please provide your official
+                details for payroll processing. <strong>Once saved, this information cannot be changed without
+                  contacting HR.</strong></p>
+
+              <form id="sensitiveDataForm">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;" class="mb-3">
+                  <div><label class="form-label text-muted small">Date of Birth</label><input type="date"
+                      class="form-control bg-light border-0" id="myDataDob" required></div>
+                  <div><label class="form-label text-muted small">Blood Group</label><input type="text"
+                      class="form-control bg-light border-0" id="myDataBlood" placeholder="e.g. O+" required></div>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;" class="mb-3">
+                  <div><label class="form-label text-muted small">Father's Name</label><input type="text"
+                      class="form-control bg-light border-0" id="myDataFather" placeholder="Full Name" required></div>
+                  <div><label class="form-label text-muted small">PAN Card No.</label><input type="text"
+                      class="form-control bg-light border-0" id="myDataPan" placeholder="ABCDE1234F" required></div>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;" class="mb-3">
+                  <div><label class="form-label text-muted small">Bank Name</label><input type="text"
+                      class="form-control bg-light border-0" id="myDataBank" placeholder="e.g. HDFC Bank" required>
+                  </div>
+                  <div><label class="form-label text-muted small">Account No.</label><input type="text"
+                      class="form-control bg-light border-0" id="myDataAcc" placeholder="Account Number" required></div>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 2fr; gap:16px;" class="mb-4">
+                  <div><label class="form-label text-muted small">IFSC Code</label><input type="text"
+                      class="form-control bg-light border-0" id="myDataIfsc" placeholder="IFSC Code" required></div>
+                  <div><label class="form-label text-muted small">Home Address</label><input type="text"
+                      class="form-control bg-light border-0" id="myDataAddress" placeholder="Full residential address"
+                      required></div>
+                </div>
+
+                <button type="submit" class="btn btn-primary" id="saveSensitiveBtn"><i
+                    class="fa-solid fa-floppy-disk me-2"></i>Save & Lock HR Data</button>
+                <p id="contactHrText"
+                  style="display:none; font-size: 12.5px; color: var(--text-secondary); margin-top: 10px; margin-bottom: 0;">
+                  <i class="fa-solid fa-circle-info text-blue me-1"></i> Your data is currently locked for security.
+                  Please contact HR to request changes.
+                </p>
+              </form>
+            </div>
+          </div>
+
+          <div class="card border-0 shadow-sm">
+            <div class="card-header border-0 bg-transparent pt-4 pb-0">
+              <h6 style="font-weight: 600; color: var(--text-primary);">👋 Welcome New Teammates!</h6>
+              <p class="text-muted mb-0" style="font-size: 12px;">Say hi to the people who joined recently.</p>
+            </div>
+            <div class="card-body d-flex gap-3 overflow-auto" id="newJoineesList" style="padding-bottom: 24px;">
+              <div class="text-muted" style="font-size:13px;">Scanning directory...</div>
+            </div>
+          </div>
+
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:24px;">
+
+          <div class="card border-0 shadow-sm"
+            style="background: linear-gradient(135deg, var(--indigo-800), var(--indigo-600)); color: white;">
+            <div class="card-body p-4">
+              <h6 class="mb-3" style="font-family: var(--font-main); font-weight: 500;"><i
+                  class="fa-solid fa-signal me-2" style="color: #69f0ae;"></i>Presence & Location</h6>
+
+              <label style="font-size: 11px; opacity: 0.7; text-transform: uppercase;">Current Status</label>
+              <select class="form-control form-select border-0 mb-3" id="myStatusSelector"
+                style="background: rgba(255,255,255,0.15); color: white; cursor: pointer; font-size: 14px;"
+                onchange="updatePresence()">
+                <option value="Online" style="color: black;">🟢 Online & Available</option>
+                <option value="Meeting" style="color: black;">🔴 In a Meeting</option>
+                <option value="PTO" style="color: black;">✈️ On PTO / Leave</option>
+                <option value="Offline" style="color: black;">🌙 Offline (Away)</option>
+              </select>
+
+              <label style="font-size: 11px; opacity: 0.7; text-transform: uppercase;">Work Mode</label>
+              <select class="form-control form-select border-0" id="myWorkModeSelector"
+                style="background: rgba(255,255,255,0.15); color: white; cursor: pointer; font-size: 14px;"
+                onchange="updatePresence()">
+                <option value="In Office" style="color: black;">🏢 In Office</option>
+                <option value="Remote" style="color: black;">🏠 Working from Home</option>
+                <option value="Hybrid" style="color: black;">☕ Cafe / Hybrid</option>
+                <option value="Transit" style="color: black;">✈️ In Transit</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="card border-0 shadow-sm">
+            <div class="card-header border-0 bg-transparent pt-4 pb-0">
+              <h6 style="font-weight: 600; color: var(--text-primary);"><i
+                  class="fa-solid fa-cake-candles me-2 text-yellow"></i>Upcoming Birthdays</h6>
+            </div>
+            <div class="card-body"
+              style="display:flex; flex-direction:column; gap:12px; max-height: 300px; overflow-y: auto;"
+              id="birthdayList">
+              <div style="color:var(--text-muted); font-size:13px; text-align:center; padding:20px;">Checking dates...
+              </div>
+            </div>
+          </div>
+
+          <div class="card border-0 shadow-sm">
+            <div class="card-header border-0 bg-transparent pt-4 pb-0">
+              <h6 style="font-weight: 600; color: var(--text-primary);">Today's Roster</h6>
+            </div>
+            <div class="card-body" style="display:flex; flex-direction:column; gap:12px;" id="todayAttList">
+              <div style="color:var(--text-muted); font-size:13px; text-align:center; padding:20px;">Loading...</div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="sidebar.js"></script>
+  <script>
+    const currentUserId = localStorage.getItem('currentUserId');
+    const role = localStorage.getItem('userRole');
+    const currentUserName = localStorage.getItem('currentUserName');
+    let chartInstance = null;
+    let myFullProfileData = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      SidebarBuilder.init();
+
+      if (role === 'Boss') {
+        document.getElementById('editBuzzBtn').style.display = 'inline-block';
+      }
+      const savedBuzz = localStorage.getItem('company_buzz_text');
+      if (savedBuzz) {
+        document.getElementById('dynamicBuzzText').textContent = savedBuzz;
+      }
+
+      // UI Configuration based on Role
+      if (role === 'Boss') {
+        document.getElementById('exportBtn').style.display = 'inline-flex';
+        document.getElementById('adminStatsRow').style.display = 'grid';
+        document.getElementById('hiringChartCard').style.display = 'block';
+        document.getElementById('dynamicGreetingRow').style.display = 'block';
+        const greetings = ["Hello", "Hi", "Welcome back", "Greetings", "Good to see you"];
+        const randomGreeting = greetings[Math.floor(Math.random() * greetings.length)];
+        document.getElementById('dynamicGreetingText').innerText = `${randomGreeting}, ${currentUserName.split(' ')[0]}! 👋`;      
+        document.getElementById('employeeWidgetsRow').style.display = 'grid';
+        document.getElementById('employeeWidgetsRow').style.gridTemplateColumns = '1fr'; 
+        document.getElementById('nextMeetingCard').style.display = 'block';
+        document.getElementById('payslipCard').style.display = 'none';
+        document.getElementById('empSummaryRow').style.display = 'none';
+        document.getElementById('employeeDataCard').style.display = 'none';
+      } else if (role === 'Manager') {
+        document.getElementById('dynamicGreetingRow').style.display = 'block';
+        const greetings = ["Hello", "Hi", "Welcome back", "Greetings", "Good to see you"];
+        const randomGreeting = greetings[Math.floor(Math.random() * greetings.length)];
+        document.getElementById('dynamicGreetingText').innerText = `${randomGreeting}, ${currentUserName.split(' ')[0]}! 👋`;
+        document.getElementById('exportBtn').style.display = 'inline-flex';
+        document.getElementById('adminStatsRow').style.display = 'grid';
+        document.getElementById('hiringChartCard').style.display = 'block';
+        document.getElementById('managerNotesCard').style.display = 'block';
+        document.getElementById('employeeDataCard').style.display = 'block';
+        document.getElementById('empSummaryRow').style.display = 'grid';
+        document.getElementById('employeeWidgetsRow').style.display = 'grid';
+        document.getElementById('employeeWidgetsRow').style.gridTemplateColumns = '1fr 1fr';
+        document.getElementById('nextMeetingCard').style.display = 'block';
+        document.getElementById('payslipCard').style.display = 'block';
+        
+      } else if (role === 'Employee') {
+        // EMPLOYEE: Set up specific dynamic greeting
+        document.getElementById('dynamicGreetingRow').style.display = 'block';
+        const greetings = ["Hello", "Hi", "Welcome back", "Greetings", "Good to see you"];
+        const randomGreeting = greetings[Math.floor(Math.random() * greetings.length)];
+        document.getElementById('dynamicGreetingText').innerText = `${randomGreeting}, ${currentUserName.split(' ')[0]}! 👋`;
+        document.getElementById('adminStatsRow').style.display = 'none';
+        document.getElementById('hiringChartCard').style.display = 'none';
+        document.getElementById('employeeWidgetsRow').style.display = 'grid';
+        document.getElementById('employeeWidgetsRow').style.gridTemplateColumns = '1fr 1fr';
+        document.getElementById('nextMeetingCard').style.display = 'block';
+        document.getElementById('payslipCard').style.display = 'block';
+        document.getElementById('employeeNotesCard').style.display = 'block';
+        document.getElementById('empSummaryRow').style.display = 'grid';
+        document.getElementById('employeeDataCard').style.display = 'block';
+      }
+
+      loadDashboardData();
+    });
+
+    async function exportExcel() {
+      const btn = document.getElementById('exportBtn');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin me-2"></i> Generating...';
+      btn.disabled = true;
+
+      try {
+        const [empRes, attRes, leavesRes, payRes] = await Promise.all([
+          fetch('http://localhost:8080/employees'),
+          fetch('http://localhost:8080/attendance'), 
+          fetch('http://localhost:8080/leaves'),
+          fetch('http://localhost:8080/salary')
+        ]);
+
+        const employees = await empRes.json();
+        const attendance = await attRes.json();
+        const leaves = await leavesRes.json();
+        const payroll = await payRes.json();
+
+        const masterData = employees.map(emp => {
+          const empPayroll = payroll.filter(p => p.employeeName === emp.name);
+          const latestSalary = empPayroll.length > 0 ? empPayroll[empPayroll.length - 1].netSalary : 'N/A';
+
+          return {
+            "Emp ID": emp.id,
+            "Full Name": emp.name,
+            "Email": emp.email || 'N/A',
+            "Phone": emp.mobile || 'N/A',
+            "Department": emp.department,
+            "Role": emp.role,
+            "Designation": emp.designation || 'N/A',
+            "Date of Birth": emp.dob || 'N/A',
+            "Blood Group": emp.bloodGroup || 'N/A',
+            "Father's Name": emp.fatherName || 'N/A',
+            "Join Date": emp.joinDate || 'N/A',
+            "PAN Card No.": emp.panCard || 'N/A',
+            "Bank Name": emp.bankName || 'N/A',
+            "Account No.": emp.bankAccount || 'N/A',
+            "IFSC Code": emp.ifscCode || 'N/A',
+            "Home Address": emp.homeAddress || 'N/A',
+            "Latest Net Salary": latestSalary,
+            "System Password": emp.password || '******'
+          };
+        });
+
+        const attendanceData = attendance.map(a => {
+          const emp = employees.find(e => e.id === a.employeeId);
+          return {
+            "Log ID": a.id,
+            "Employee Name": emp ? emp.name : 'Unknown',
+            "Date": (a.attendanceDate || a.date),
+            "Status": a.status,
+            "Clock In Time": a.clockInTime || 'N/A',
+            "Clock Out Time": a.clockOutTime || 'N/A'
+          };
+        });
+
+        const leaveData = leaves.map(l => ({
+          "Leave ID": l.id,
+          "Employee Name": l.employeeName,
+          "Leave Type": l.leaveType,
+          "Start Date": l.startDate,
+          "End Date": l.endDate || l.startDate,
+          "Reason": l.reason || 'N/A',
+          "Status": l.status
+        }));
+
+        const wb = XLSX.utils.book_new();
+        const ws1 = XLSX.utils.json_to_sheet(masterData);
+        const ws2 = XLSX.utils.json_to_sheet(attendanceData);
+        const ws3 = XLSX.utils.json_to_sheet(leaveData);
+
+        ws1['!cols'] = [{wch: 10}, {wch: 20}, {wch: 25}, {wch: 15}, {wch: 15}];
+
+        XLSX.utils.book_append_sheet(wb, ws1, "Employee Master");
+        XLSX.utils.book_append_sheet(wb, ws2, "Attendance Logs");
+        XLSX.utils.book_append_sheet(wb, ws3, "Leave Management");
+
+        const todayStrDate = new Date().toISOString().split('T')[0];
+        XLSX.writeFile(wb, `EmpyreanHR_Master_Report_${todayStrDate}.xlsx`);
+
+      } catch (error) {
+        console.error("Error exporting Excel:", error);
+        alert("Failed to generate Excel report. Check backend connection.");
+      } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+      }
+    }
+
+    function editCompanyBuzz() {
+      const currentText = document.getElementById('dynamicBuzzText').textContent;
+      const newText = prompt("Enter the new company announcement:", currentText);
+      
+      if (newText !== null && newText.trim() !== "") {
+        localStorage.setItem('company_buzz_text', newText.trim());
+        document.getElementById('dynamicBuzzText').textContent = newText.trim();
+      }
+    }
+
+    async function loadDashboardData() {
+      try {
+        const [empRes, attRes, evtRes, payRes] = await Promise.all([
+          fetch('http://localhost:8080/employees'),
+          fetch(`http://localhost:8080/attendance/date/${todayStr()}`),
+          fetch('http://localhost:8080/events'),
+          fetch('http://localhost:8080/salary')
+        ]);
+
+        const employees = await empRes.json();
+        const attendance = await attRes.json();
+        const events = await evtRes.json();
+        const payroll = await payRes.json();
+
+        const me = employees.find(e => String(e.id) === String(currentUserId));
+        myFullProfileData = me;
+
+        document.getElementById('myStatusSelector').value = me.status || 'Online';
+        document.getElementById('myWorkModeSelector').value = me.workMode || 'Remote';
+        startIdleTimer();
+
+        const todayDateObj = new Date().setHours(0, 0, 0, 0);
+
+        const upcomingMeetings = events.filter(e => e.type === 'Meeting' && new Date(e.startDate) >= todayDateObj);
+        upcomingMeetings.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+        if (upcomingMeetings.length > 0) {
+          document.getElementById('nextMeetingTitle').textContent = upcomingMeetings[0].title;
+          document.getElementById('nextMeetingTime').textContent = formatDate(upcomingMeetings[0].startDate);
+        } else {
+          document.getElementById('nextMeetingTitle').textContent = "Clear schedule!";
+        }
+
+        if (role === 'Employee' || role === 'Manager') {
+          const fields = [
+            { id: 'myDataDob', key: 'dob' }, { id: 'myDataBlood', key: 'bloodGroup' },
+            { id: 'myDataFather', key: 'fatherName' }, { id: 'myDataPan', key: 'panCard' },
+            { id: 'myDataBank', key: 'bankName' }, { id: 'myDataAcc', key: 'bankAccount' },
+            { id: 'myDataIfsc', key: 'ifscCode' }, { id: 'myDataAddress', key: 'homeAddress' }
+          ];
+
+          let allFieldsFilled = true;
+          fields.forEach(f => {
+            const inputEl = document.getElementById(f.id);
+            const dbValue = myFullProfileData[f.key];
+            if (dbValue && dbValue !== 'Not Provided' && dbValue.trim() !== '') {
+              inputEl.value = dbValue;
+              inputEl.disabled = true;
+            } else {
+              allFieldsFilled = false;
+            }
+          });
+
+          if (allFieldsFilled) {
+            document.getElementById('saveSensitiveBtn').style.display = 'none';
+            document.getElementById('lockedNotice').style.display = 'inline-block';
+            document.getElementById('contactHrText').style.display = 'block';
+          }
+
+          document.getElementById('activeProjectName').textContent = me.activeProjectName || 'General Operations';
+          const prog = me.projectProgress || Math.floor(Math.random() * 40) + 40; 
+          document.getElementById('activeProjectProgress').style.width = prog + '%';
+          document.getElementById('activeProjectPercent').textContent = prog + '% Complete';
+
+          const upcomingHolidays = events.filter(e => e.type === 'Holiday' && new Date(e.startDate) >= todayDateObj);
+          upcomingHolidays.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+
+          if (upcomingHolidays.length > 0) {
+            const nextHoli = upcomingHolidays[0];
+            const diffTime = Math.abs(new Date(nextHoli.startDate) - todayDateObj);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            document.getElementById('nextHolidayDays').textContent = diffDays === 0 ? "Today!" : `${diffDays} Days`;
+            document.getElementById('nextHolidayName').textContent = nextHoli.title;
+          } else {
+            document.getElementById('nextHolidayDays').textContent = "--";
+            document.getElementById('nextHolidayName').textContent = "No holidays scheduled";
+          }
+
+          const myTeam = employees.filter(e => e.department === me.department);
+          const onlineCount = myTeam.filter(e => e.status === 'Online').length;
+          document.getElementById('teamOnlineFrac').textContent = `${onlineCount}/${myTeam.length}`;
+
+          const myPayslips = payroll.filter(p => p.employeeName === me.name);
+          if (myPayslips.length > 0) {
+            const latest = myPayslips[myPayslips.length - 1];
+            document.getElementById('payslipMonth').textContent = `For ${latest.salaryMonth}`;
+            const formatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+            document.getElementById('payslipAmount').textContent = formatter.format(latest.netSalary);
+          } else {
+            document.getElementById('payslipMonth').textContent = "No generated payslips";
+          }
+        }
+
+        // Fetch Notes Logic (Differentiated by Role)
+        try {
+            const notesRes = await fetch('http://localhost:8080/teamhub/notes');
+            if (notesRes.ok) {
+                const allNotes = await notesRes.json();
+                
+                if (role === 'Manager') {
+                    const myNotes = allNotes.filter(n => n.managerName === currentUserName);
+                    myNotes.sort((a,b) => new Date(b.dateAdded) - new Date(a.dateAdded));
+
+                    const notesListEl = document.getElementById('managerNotesList');
+                    notesListEl.innerHTML = '';
+                    if (myNotes.length === 0) {
+                        notesListEl.innerHTML = '<div class="text-center text-muted py-4">No recent 1:1 notes.</div>';
+                    } else {
+                        myNotes.slice(0, 5).forEach(note => {
+                            notesListEl.innerHTML += `
+                                <div class="card mb-3 border-0 shadow-sm" style="border-left: 4px solid var(--yellow) !important; background: var(--surface-2);">
+                                  <div class="card-body p-3">
+                                    <div class="d-flex justify-content-between mb-2">
+                                      <strong style="font-size: 13px; color: var(--text-primary);">${note.employeeName}</strong>
+                                      <small style="color: var(--text-muted); font-size: 11px;"><i class="fa-regular fa-clock me-1"></i> ${note.dateAdded}</small>
+                                    </div>
+                                    <p class="mb-0" style="font-size: 13px; color: var(--text-secondary); line-height: 1.5;">${note.noteText}</p>
+                                  </div>
+                                </div>
+                            `;
+                        });
+                    }
+                } else if (role === 'Employee') {
+                    // Employee views notes received ABOUT them
+                    const myNotes = allNotes.filter(n => n.employeeName === currentUserName);
+                    myNotes.sort((a,b) => new Date(b.dateAdded) - new Date(a.dateAdded));
+
+                    const notesListEl = document.getElementById('employeeNotesList');
+                    notesListEl.innerHTML = '';
+                    if (myNotes.length === 0) {
+                        notesListEl.innerHTML = '<div class="text-center text-muted py-4">You have no new feedback notes.</div>';
+                    } else {
+                        myNotes.slice(0, 5).forEach(note => {
+                            notesListEl.innerHTML += `
+                                <div class="card mb-3 border-0 shadow-sm" style="border-left: 4px solid var(--indigo-400) !important; background: var(--surface-2);">
+                                  <div class="card-body p-3">
+                                    <div class="d-flex justify-content-between mb-2">
+                                      <strong style="font-size: 13px; color: var(--text-primary);">From: ${note.managerName}</strong>
+                                      <small style="color: var(--text-muted); font-size: 11px;"><i class="fa-regular fa-clock me-1"></i> ${note.dateAdded}</small>
+                                    </div>
+                                    <p class="mb-0" style="font-size: 13px; color: var(--text-secondary); line-height: 1.5;">${note.noteText}</p>
+                                  </div>
+                                </div>
+                            `;
+                        });
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("Could not load notes on dashboard", e);
+        }
+
+        const joineesEl = document.getElementById('newJoineesList');
+        joineesEl.innerHTML = '';
+        const recentLimit = new Date();
+        recentLimit.setDate(recentLimit.getDate() - 30);
+
+        const newbies = employees.filter(e => e.joinDate && new Date(e.joinDate) >= recentLimit && e.role !== 'Boss');
+        if (newbies.length === 0) {
+          joineesEl.innerHTML = `<div class="text-muted w-100 text-center" style="font-size:12px;">No new joiners this month.</div>`;
+        } else {
+          newbies.forEach(n => {
+            joineesEl.innerHTML += `
+            <div class="joinee-card">
+              <img src="${avatarUrl(n.name)}" class="avatar mb-2" width="48" height="48" style="border: 2px solid var(--indigo-100);">
+              <div style="font-size: 11.5px; font-weight: 600; color: var(--text-primary);">${n.name.split(' ')[0]}</div>
+              <div style="font-size: 10px; color: var(--text-muted);">${n.department}</div>
+            </div>
+          `;
+          });
+        }
+
+        const bdayListEl = document.getElementById('birthdayList');
+        bdayListEl.innerHTML = '';
+        let upcomingBirthdays = [];
+        const currentDate = new Date();
+
+        employees.forEach(emp => {
+          if (emp.dob && emp.dob !== 'Not Provided' && emp.dob !== '') {
+            const parts = emp.dob.split('-');
+            if (parts.length === 3) {
+              const bMonth = parseInt(parts[1]) - 1;
+              const bDay = parseInt(parts[2]);
+
+              let nextBday = new Date(currentDate.getFullYear(), bMonth, bDay);
+              if (nextBday < new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate())) {
+                nextBday.setFullYear(currentDate.getFullYear() + 1);
+              }
+
+              const diffTime = nextBday.getTime() - currentDate.getTime();
+              const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+              if (diffDays >= 0 && diffDays <= 30) {
+                upcomingBirthdays.push({ ...emp, daysAway: diffDays, nextBday: nextBday });
+              }
+            }
+          }
+        });
+
+        upcomingBirthdays.sort((a, b) => a.daysAway - b.daysAway);
+
+        if (upcomingBirthdays.length === 0) {
+          bdayListEl.innerHTML = `<div style="color:var(--text-muted); font-size:13px; text-align:center; padding:20px;">No birthdays in the next 30 days.</div>`;
+        } else {
+          upcomingBirthdays.forEach(emp => {
+            let dayText = emp.daysAway === 0 ? '<strong class="text-success">Today! 🎉</strong>' :
+              emp.daysAway === 1 ? 'Tomorrow' : `In ${emp.daysAway} days`;
+            const bdayFormatted = emp.nextBday.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+            bdayListEl.innerHTML += `
+            <div style="display:flex; align-items:center; justify-content:space-between; padding: 10px; background: var(--surface-2); border-radius: 8px;">
+              <div class="user-chip">
+                <img src="${avatarUrl(emp.name)}" class="avatar" width="36" height="36">
+                <div>
+                  <div class="user-chip-name" style="font-size:13px;">${emp.name}</div>
+                  <div style="font-size:11px; color:var(--text-muted);"><i class="fa-solid fa-gift text-yellow me-1"></i>${bdayFormatted}</div>
+                </div>
+              </div>
+              <span style="font-size: 12px; color: var(--text-secondary);">${dayText}</span>
+            </div>
+          `;
+          });
+        }
+
+        const staff = employees.filter(e => e.role !== 'Boss');
+        document.getElementById('statTotal').textContent = staff.length;
+
+        let present = 0, absent = 0, onLeave = 0;
+        attendance.forEach(r => {
+          if (r.status === 'Present') present++;
+          else if (r.status === 'Absent' || r.status === 'No Record') absent++;
+          else if (r.status === 'On Leave') onLeave++;
+        });
+        document.getElementById('statPresent').textContent = present;
+        document.getElementById('statAbsent').textContent = absent;
+        document.getElementById('statLeave').textContent = onLeave;
+
+        const attMap = {};
+        attendance.forEach(r => { attMap[r.employeeId] = r; });
+
+        const listEl = document.getElementById('todayAttList');
+        listEl.innerHTML = '';
+        staff.slice(0, 8).forEach(emp => {
+          const rec = attMap[emp.id];
+          const attStatus = rec ? rec.status : 'No Record';
+          const badgeClass = attStatus === 'Present' ? 'badge-green' : attStatus === 'Half Day' ? 'badge-yellow' : attStatus === 'On Leave' ? 'badge-blue' : 'badge-gray';
+          const workModeText = emp.workMode === 'In Office' ? '🏢' : emp.workMode === 'Hybrid' ? '☕' : emp.workMode === 'Transit' ? '✈️' : '🏠';
+
+          listEl.innerHTML += `
+          <div style="display:flex; align-items:center; justify-content:space-between; padding-bottom: 8px; border-bottom: 1px solid var(--surface-2);">
+            <div class="user-chip">
+              <img src="${avatarUrl(emp.name)}" class="avatar" width="30" height="30">
+              <div>
+                <div class="user-chip-name" style="font-size:13px;">${emp.name} <span title="${emp.workMode}">${workModeText}</span></div>
+                <div style="font-size:10px; color:var(--text-muted);">${emp.department} &bull; ${emp.status || 'Offline'}</div>
+              </div>
+            </div>
+            <span class="badge ${badgeClass}">${attStatus}</span>
+          </div>
+        `;
+        });
+
+      } catch (e) { console.error("Error loading dashboard data", e); }
+    }
+
+    document.getElementById('sensitiveDataForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!myFullProfileData) return;
+
+      myFullProfileData.dob = document.getElementById('myDataDob').value;
+      myFullProfileData.bloodGroup = document.getElementById('myDataBlood').value;
+      myFullProfileData.fatherName = document.getElementById('myDataFather').value;
+      myFullProfileData.panCard = document.getElementById('myDataPan').value;
+      myFullProfileData.bankName = document.getElementById('myDataBank').value;
+      myFullProfileData.bankAccount = document.getElementById('myDataAcc').value;
+      myFullProfileData.ifscCode = document.getElementById('myDataIfsc').value;
+      myFullProfileData.homeAddress = document.getElementById('myDataAddress').value;
+
+      try {
+        const response = await fetch(`http://localhost:8080/employees/${currentUserId}`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(myFullProfileData)
+        });
+        if (response.ok) {
+          alert("HR Data saved securely. It is now locked.");
+          loadDashboardData(); 
+        }
+      } catch (error) { alert("Failed to save data."); }
+    });
+
+    async function updatePresence() {
+      if (!myFullProfileData) return;
+      myFullProfileData.status = document.getElementById('myStatusSelector').value;
+      myFullProfileData.workMode = document.getElementById('myWorkModeSelector').value;
+
+      try {
+        await fetch(`http://localhost:8080/employees/${currentUserId}`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(myFullProfileData)
+        });
+        loadDashboardData(); 
+      } catch (e) { console.error("Failed to save presence.", e); }
+    }
+
+    function startIdleTimer() {
+      let time;
+      window.onload = resetTimer; document.onmousemove = resetTimer; document.onkeypress = resetTimer; document.onclick = resetTimer;
+      function autoSetOffline() {
+        const dropdown = document.getElementById('myStatusSelector');
+        if (dropdown.value !== 'Offline') { dropdown.value = 'Offline'; updatePresence(); }
+      }
+      function resetTimer() { clearTimeout(time); time = setTimeout(autoSetOffline, 1000 * 60 * 5); }
+    }
+  </script>
+</body>
+
+</html>

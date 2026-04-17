@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Time & Attendance — EmpyreanOS</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .tab-panel {
+      display: none;
+    }
+
+    .tab-panel.active {
+      display: block;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo">E</div>
+      <div class="brand-name">Empyrean<span>OS</span></div>
+    </div>
+    <nav class="sidebar-nav" id="sidebarNav"></nav>
+    <div class="sidebar-footer">
+      <button class="nav-link" style="color: #ff7b7b;" onclick="logout()">
+        <i class="fa-solid fa-right-from-bracket fa-fw"></i>
+        <span>Sign Out</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="sub-sidebar" id="subSidebar"></div>
+
+  <div class="main-content" id="mainContent">
+    <div class="topbar">
+      <div class="topbar-title" id="pageTitle">Time & Attendance</div>
+      <div class="topbar-actions">
+
+        <div id="topbarBossActions" style="display:none; align-items:center; gap:12px;">
+          <select class="form-control form-select" id="bossEmpFilter"
+            style="width:200px; padding: 8px 12px; font-size: 13px;" onchange="onEmpFilterChange()">
+            <option value="">All Employees</option>
+          </select>
+          <input type="date" class="form-control" id="bossDateFilter"
+            style="width:150px; padding: 8px 12px; font-size: 13px;" onchange="loadBossDateView()">
+        </div>
+
+        <img id="topbarAvatar" class="avatar" width="34" height="34">
+        <span id="topbarUserName" style="font-size:13.5px; font-weight:500; color:var(--text-primary);"></span>
+      </div>
+    </div>
+
+    <div class="page-body">
+
+      <div id="employeeView" style="display:none;">
+        <div style="display:grid; grid-template-columns: 340px 1fr; gap:24px; margin-bottom:24px;">
+
+          <div class="clock-widget" style="box-shadow: var(--shadow-md);">
+            <div class="clock-display" id="liveClock">--:--:--</div>
+            <div class="clock-date" id="liveDate"></div>
+            <div id="clockBtnArea">
+              <button class="clock-btn clock-btn-in" id="clockInBtn" onclick="doClock('in')">
+                <i class="fa-solid fa-play"></i> Clock In
+              </button>
+            </div>
+            <div class="clock-status" id="clockStatus">Not clocked in today</div>
+          </div>
+
+          <div class="stat-row" style="grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom:0;">
+            <div class="stat-card">
+              <div class="stat-icon green"><i class="fa-solid fa-circle-check"></i></div>
+              <div class="stat-info">
+                <h3 id="statPresent">—</h3>
+                <p>Days Present</p>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon yellow"><i class="fa-solid fa-clock-rotate-left"></i></div>
+              <div class="stat-info">
+                <h3 id="statHalf">—</h3>
+                <p>Short / Half Days</p>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon red"><i class="fa-solid fa-circle-xmark"></i></div>
+              <div class="stat-info">
+                <h3 id="statAbsent">—</h3>
+                <p>Absences</p>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon blue"><i class="fa-solid fa-plane-departure"></i></div>
+              <div class="stat-info">
+                <h3 id="statLeave">—</h3>
+                <p>On Leave</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h6><i class="fa-solid fa-timeline text-indigo me-2"></i>My Attendance History</h6>
+            <span style="font-size:12px; color:var(--text-muted);">From day of joining to today</span>
+          </div>
+          <div style="overflow-x:auto;">
+            <table class="table align-middle text-center">
+              <thead>
+                <tr>
+                  <th style="text-align: left;">Date</th>
+                  <th>Day</th>
+                  <th>Clock In</th>
+                  <th>Clock Out</th>
+                  <th>Hours</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="myAttBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div id="bossView" style="display:none;">
+
+        <div class="tab-panel" id="panel-daily">
+          <div class="stat-row" style="margin-bottom:24px;">
+            <div class="stat-card">
+              <div class="stat-icon green"><i class="fa-solid fa-user-check"></i></div>
+              <div class="stat-info">
+                <h3 id="bossPresent">—</h3>
+                <p>Present</p>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon yellow"><i class="fa-solid fa-clock-rotate-left"></i></div>
+              <div class="stat-info">
+                <h3 id="bossHalf">—</h3>
+                <p>Short / Half Day</p>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon red"><i class="fa-solid fa-user-xmark"></i></div>
+              <div class="stat-info">
+                <h3 id="bossAbsent">—</h3>
+                <p>Absent</p>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon blue"><i class="fa-solid fa-plane-departure"></i></div>
+              <div class="stat-info">
+                <h3 id="bossLeave">—</h3>
+                <p>On Leave</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h6 id="dayTableTitle">All Employees — Today</h6>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="table align-middle">
+                <thead>
+                  <tr>
+                    <th>Employee</th>
+                    <th>Department</th>
+                    <th class="text-center">Clock In</th>
+                    <th class="text-center">Clock Out</th>
+                    <th class="text-center">Hours</th>
+                    <th class="text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="bossDayBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel" id="panel-history">
+          <div class="card">
+            <div class="card-header">
+              <h6>Employee Attendance History</h6>
+              <select class="form-control form-select" id="historyEmpPicker" style="width:220px; font-size: 13px;"
+                onchange="loadEmpHistory()">
+                <option value="">Select Employee...</option>
+              </select>
+            </div>
+
+            <div class="stat-row" id="historyStats" style="padding:20px 20px 0; display:none; gap: 16px;">
+              <div class="stat-card p-3">
+                <div class="stat-icon green" style="width:36px; height:36px; font-size: 14px;"><i
+                    class="fa-solid fa-circle-check"></i></div>
+                <div class="stat-info">
+                  <h3 id="hs_present" style="font-size:18px;">—</h3>
+                  <p>Present</p>
+                </div>
+              </div>
+              <div class="stat-card p-3">
+                <div class="stat-icon yellow" style="width:36px; height:36px; font-size: 14px;"><i
+                    class="fa-solid fa-clock-rotate-left"></i></div>
+                <div class="stat-info">
+                  <h3 id="hs_half" style="font-size:18px;">—</h3>
+                  <p>Half Days</p>
+                </div>
+              </div>
+              <div class="stat-card p-3">
+                <div class="stat-icon red" style="width:36px; height:36px; font-size: 14px;"><i
+                    class="fa-solid fa-circle-xmark"></i></div>
+                <div class="stat-info">
+                  <h3 id="hs_absent" style="font-size:18px;">—</h3>
+                  <p>Absent</p>
+                </div>
+              </div>
+              <div class="stat-card p-3">
+                <div class="stat-icon blue" style="width:36px; height:36px; font-size: 14px;"><i
+                    class="fa-solid fa-plane-departure"></i></div>
+                <div class="stat-info">
+                  <h3 id="hs_leave" style="font-size:18px;">—</h3>
+                  <p>On Leave</p>
+                </div>
+              </div>
+            </div>
+
+            <div style="overflow-x:auto;">
+              <table class="table align-middle text-center mt-3">
+                <thead>
+                  <tr>
+                    <th style="text-align: left;">Date</th>
+                    <th>Day</th>
+                    <th>Clock In</th>
+                    <th>Clock Out</th>
+                    <th>Hours</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="bossHistoryBody">
+                  <tr>
+                    <td colspan="6" class="text-center text-muted py-5">Select an employee from the dropdown above.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="sidebar.js"></script>
+  <script>
+    const ATT = 'http://localhost:8080/attendance';
+    const EMP = 'http://localhost:8080/employees';
+
+    const role = localStorage.getItem('userRole');
+    const userId = parseInt(localStorage.getItem('currentUserId'));
+    const userName = localStorage.getItem('currentUserName') || '';
+    
+    // Fallback date in case profile fetch fails
+    let currentUserJoinDate = '2026-01-01'; 
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      SidebarBuilder.init();
+      startClock();
+      
+      // Attempt to fetch current user's join date for accurate history gap-filling
+      try {
+          const meRes = await fetch(`${EMP}/${userId}`);
+          const meData = await meRes.json();
+          if (meData.joinDate) currentUserJoinDate = meData.joinDate;
+      } catch(e) {}
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const viewMode = urlParams.get('view');
+      const tabMode = urlParams.get('tab') || 'daily';
+
+      // --- BOSS & MANAGER (ALL VIEW) LOGIC ---
+      if (role === 'Boss' || (role === 'Manager' && viewMode === 'all')) {
+        document.getElementById('bossView').style.display = 'block';
+        document.getElementById('employeeView').style.display = 'none';
+
+        const titles = { 'daily': role === 'Boss' ? 'Daily Overview' : 'Team Daily Overview', 'history': role === 'Boss' ? 'Employee History' : 'Team History' };
+        document.getElementById('pageTitle').textContent = titles[tabMode] || titles['daily'];
+
+        if (tabMode === 'daily') {
+          document.getElementById('topbarBossActions').style.display = 'flex';
+          const dateInput = document.getElementById('bossDateFilter');
+          dateInput.value = todayStr();
+        }
+
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        const targetPanel = document.getElementById(`panel-${tabMode}`);
+        if (targetPanel) {
+          targetPanel.classList.add('active');
+        }
+
+        await loadEmployeeDropdowns();
+        
+        if (tabMode === 'daily') loadBossDateView();
+      }
+      // --- EMPLOYEE / MANAGER (PERSONAL VIEW) LOGIC ---
+      else {
+        document.getElementById('bossView').style.display = 'none';
+        document.getElementById('employeeView').style.display = 'block';
+        document.getElementById('pageTitle').textContent = 'My Attendance';
+        document.getElementById('topbarBossActions').style.display = 'none';
+
+        loadMyAttendance();
+        checkTodayStatus();
+      }
+    });
+
+    // --- GAP FILLER ALGORITHM (Frontend Simulation of Absences) ---
+    function fillMissingDays(records, startDateStr) {
+      const fullList = [];
+      const start = new Date(startDateStr);
+      const end = new Date(); // Today
+      
+      const recordMap = {};
+      records.forEach(r => { recordMap[r.attendanceDate] = r; });
+
+      // Loop from Join Date up to Today
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const dateStr = d.toISOString().split('T')[0];
+        const dayOfWeek = d.getDay(); // 0 = Sunday, 6 = Saturday
+        
+        if (recordMap[dateStr]) {
+          fullList.push(recordMap[dateStr]);
+        } else {
+          // If no record exists, mark as absent (or weekend)
+          let status = (dayOfWeek === 0 || dayOfWeek === 6) ? 'Weekend' : 'Absent';
+          
+          fullList.push({
+            attendanceDate: dateStr,
+            inTime: null,
+            outTime: null,
+            status: status
+          });
+        }
+      }
+      
+      // Sort newest dates first
+      return fullList.sort((a, b) => new Date(b.attendanceDate) - new Date(a.attendanceDate));
+    }
+
+
+    // --- Clock Logic ---
+    function startClock() {
+      const clockEl = document.getElementById('liveClock');
+      const dateEl = document.getElementById('liveDate');
+      if (!clockEl) return;
+      function tick() {
+        const now = new Date();
+        clockEl.textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        dateEl.textContent = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+      }
+      tick();
+      setInterval(tick, 1000);
+    }
+
+    async function checkTodayStatus() {
+      try {
+        const res = await fetch(`${ATT}/today/${userId}`);
+        if (res.status === 204) {
+          document.getElementById('clockStatus').textContent = 'Not clocked in today';
+          return;
+        }
+        const rec = await res.json();
+        const area = document.getElementById('clockBtnArea');
+        const status = document.getElementById('clockStatus');
+
+        if (rec.inTime && !rec.outTime) {
+          area.innerHTML = `<button class="clock-btn clock-btn-out" onclick="doClock('out')"><i class="fa-solid fa-stop"></i> Clock Out</button>`;
+          status.textContent = `Clocked in at ${rec.inTime}`;
+        } else if (rec.inTime && rec.outTime) {
+          area.innerHTML = `<div style="background:rgba(255,255,255,0.15); padding:10px 24px; border-radius:24px; font-size:14px; font-weight:500;">Done for today <i class="fa-solid fa-check ms-1"></i></div>`;
+          status.textContent = `${rec.inTime} → ${rec.outTime} · ${rec.status}`;
+        }
+      } catch (e) { console.error(e); }
+    }
+
+    async function doClock(type) {
+      try {
+        await fetch(`${ATT}/clock${type}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ employeeId: String(userId), employeeName: userName })
+        });
+        await checkTodayStatus();
+        await loadMyAttendance();
+      } catch (e) { alert('Server not available.'); }
+    }
+
+    // --- Personal Attendance ---
+    async function loadMyAttendance() {
+      try {
+        const res = await fetch(`${ATT}/my/${userId}`);
+        const rawRecords = await res.json();
+        
+        // Pass the raw records through our Gap Filler algorithm
+        const records = fillMissingDays(rawRecords, currentUserJoinDate);
+
+        let present = 0, half = 0, absent = 0, leave = 0;
+        const tbody = document.getElementById('myAttBody');
+        tbody.innerHTML = '';
+
+        records.forEach(r => {
+          if (r.status === 'Present') present++;
+          else if (r.status === 'Half Day') half++;
+          else if (r.status === 'Absent') absent++;
+          else if (r.status === 'On Leave') leave++;
+
+          tbody.innerHTML += buildAttRow(r, false);
+        });
+
+        if (records.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-5">No attendance records found.</td></tr>`;
+        }
+
+        document.getElementById('statPresent').textContent = present;
+        document.getElementById('statHalf').textContent = half;
+        document.getElementById('statAbsent').textContent = absent;
+        document.getElementById('statLeave').textContent = leave;
+      } catch (e) { console.error(e); }
+    }
+
+    // --- Boss / Manager Logic ---
+    async function loadEmployeeDropdowns() {
+      const res = await fetch(EMP);
+      const emps = await res.json();
+      
+      let staff = emps.filter(e => e.role !== 'Boss');
+      
+      // If Manager, only show employees in their department
+      if (role === 'Manager') {
+          const myDept = localStorage.getItem('userDept') || 'General';
+          staff = staff.filter(e => e.department === myDept);
+      }
+
+      const filter = document.getElementById('bossEmpFilter');
+      const histPicker = document.getElementById('historyEmpPicker');
+
+      staff.forEach(emp => {
+        if (filter) filter.innerHTML += `<option value="${emp.id}">${emp.name}</option>`;
+        if (histPicker) histPicker.innerHTML += `<option value="${emp.id}" data-joindate="${emp.joinDate || '2026-01-01'}">${emp.name}</option>`;
+      });
+    }
+
+    async function loadBossDateView() {
+      const date = document.getElementById('bossDateFilter').value;
+      const empId = document.getElementById('bossEmpFilter').value;
+
+      const filterSelect = document.getElementById('bossEmpFilter');
+      const empNameText = empId ? filterSelect.options[filterSelect.selectedIndex].text : 'All Employees';
+      document.getElementById('dayTableTitle').textContent = `${empNameText} — ${formatDate(date)}`;
+
+      const [attRes, empRes] = await Promise.all([
+        fetch(`${ATT}/date/${date}`),
+        fetch(EMP)
+      ]);
+      const attRecords = await attRes.json();
+      const employees = await empRes.json();
+
+      const attMap = {};
+      attRecords.forEach(r => { attMap[r.employeeId] = r; });
+
+      let staff = employees.filter(e => e.role !== 'Boss');
+      
+      // Filter by department if Manager
+      if (role === 'Manager') {
+          const myDept = localStorage.getItem('userDept') || 'General';
+          staff = staff.filter(e => e.department === myDept);
+      }
+
+      if (empId) staff = staff.filter(e => String(e.id) === String(empId));
+
+      let present = 0, half = 0, absent = 0, leave = 0;
+      const tbody = document.getElementById('bossDayBody');
+      tbody.innerHTML = '';
+
+      staff.forEach(emp => {
+        const rec = attMap[emp.id];
+        // Ensure "No Record" translates correctly for the UI
+        let status = rec ? rec.status : 'Absent';
+        
+        // Don't mark them absent if they haven't joined yet
+        if (!rec && emp.joinDate && new Date(emp.joinDate) > new Date(date)) {
+            status = 'Not Joined';
+        }
+
+        if (status === 'Present') present++;
+        else if (status === 'Half Day') half++;
+        else if (status === 'On Leave') leave++;
+        else if (status === 'Absent' || status === 'No Record') absent++;
+
+        const hours = rec ? calcHours(rec.inTime, rec.outTime) : '—';
+
+        tbody.innerHTML += `
+        <tr>
+          <td>
+            <div class="user-chip">
+              <img src="${avatarUrl(emp.name)}" class="avatar" width="36" height="36">
+              <div>
+                <div class="user-chip-name">${emp.name}</div>
+                <div class="user-chip-sub">${emp.designation || 'Staff'}</div>
+              </div>
+            </div>
+          </td>
+          <td><span class="badge badge-gray" style="border: 1px solid var(--border);">${emp.department || '—'}</span></td>
+          <td class="text-center">${rec ? (rec.inTime || '—') : '—'}</td>
+          <td class="text-center">${rec ? (rec.outTime || '—') : '—'}</td>
+          <td class="text-center" style="color:var(--text-secondary); font-size:13px;">${hours}</td>
+          <td class="text-center">${statusBadge(status)}</td>
+        </tr>
+      `;
+      });
+
+      if (tbody.innerHTML === '') {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-5">No records found</td></tr>`;
+      }
+
+      document.getElementById('bossPresent').textContent = present;
+      document.getElementById('bossHalf').textContent = half;
+      document.getElementById('bossAbsent').textContent = absent;
+      document.getElementById('bossLeave').textContent = leave;
+    }
+
+    function onEmpFilterChange() {
+      loadBossDateView();
+    }
+
+    async function loadEmpHistory() {
+      const selectEl = document.getElementById('historyEmpPicker');
+      const empId = selectEl.value;
+      if (!empId) return;
+
+      const targetJoinDate = selectEl.options[selectEl.selectedIndex].getAttribute('data-joindate');
+
+      const res = await fetch(`${ATT}/employee/${empId}`);
+      const rawRecords = await res.json();
+      
+      // Pass the raw records through our Gap Filler algorithm
+      const records = fillMissingDays(rawRecords, targetJoinDate);
+
+      let present = 0, half = 0, absent = 0, leave = 0;
+      const tbody = document.getElementById('bossHistoryBody');
+      tbody.innerHTML = '';
+
+      records.forEach(r => {
+        if (r.status === 'Present') present++;
+        else if (r.status === 'Half Day') half++;
+        else if (r.status === 'Absent') absent++;
+        else if (r.status === 'On Leave') leave++;
+
+        tbody.innerHTML += buildAttRow(r, true);
+      });
+
+      if (records.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-5">No records found for this employee</td></tr>`;
+      }
+
+      document.getElementById('historyStats').style.display = 'grid';
+      document.getElementById('hs_present').textContent = present;
+      document.getElementById('hs_half').textContent = half;
+      document.getElementById('hs_absent').textContent = absent;
+      document.getElementById('hs_leave').textContent = leave;
+    }
+
+    // --- Helpers ---
+    function buildAttRow(r, isCenter) {
+      const hours = calcHours(r.inTime, r.outTime);
+      const badge = statusBadge(r.status);
+      const alignClass = isCenter ? 'text-center' : '';
+
+      return `
+      <tr>
+        <td style="text-align: left; font-weight: 500;">${formatDate(r.attendanceDate)}</td>
+        <td style="color:var(--text-muted); font-size: 13px;">${formatDay(r.attendanceDate)}</td>
+        <td class="${alignClass}">${r.inTime || '<span style="color:var(--text-muted);">—</span>'}</td>
+        <td class="${alignClass}">${r.outTime || '<span style="color:var(--text-muted);">—</span>'}</td>
+        <td class="${alignClass}" style="color:var(--text-secondary); font-size:13px; font-weight: 500;">${hours}</td>
+        <td class="${alignClass}">${badge}</td>
+      </tr>
+    `;
+    }
+
+    function calcHours(inTime, outTime) {
+      if (!inTime || !outTime) return '—';
+      try {
+        const fmt = (t) => {
+          const [time, period] = t.split(' ');
+          let [h, m] = time.split(':').map(Number);
+          if (period === 'PM' && h !== 12) h += 12;
+          if (period === 'AM' && h === 12) h = 0;
+          return h * 60 + m;
+        };
+        const mins = fmt(outTime) - fmt(inTime);
+        if (mins <= 0) return '—';
+        const h = Math.floor(mins / 60);
+        const m = mins % 60;
+        return `${h}h ${m}m`;
+      } catch (e) { return '—'; }
+    }
+
+    function statusBadge(status) {
+      const map = {
+        'Present': 'badge-green',
+        'Half Day': 'badge-yellow',
+        'Absent': 'badge-red',
+        'On Leave': 'badge-blue',
+        'Weekend': 'badge-gray'
+      };
+      return `<span class="badge ${map[status] || 'badge-gray'}">${status || 'No Record'}</span>`;
+    }
+  </script>
+</body>
+
+</html>

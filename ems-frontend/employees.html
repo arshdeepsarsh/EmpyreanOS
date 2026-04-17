@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Directory & Access — EmpyreanOS</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+  <style>
+    /* FAANG DIRECTORY STYLES */
+    .search-hero { background: var(--surface); padding: 24px; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: 1px solid var(--border); margin-bottom: 24px; display: flex; gap: 16px; align-items: center; }
+    .search-input-wrapper { position: relative; flex: 1; }
+    .search-input-wrapper i { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 1.1rem; }
+    .mega-search { width: 100%; padding: 14px 14px 14px 48px; border: 2px solid var(--surface-3); border-radius: 30px; font-size: 15px; font-family: var(--font-main); transition: all 0.2s; background: var(--surface-2); outline: none; color: var(--text-primary); }
+    .mega-search:focus { border-color: var(--indigo-500); background: var(--surface); box-shadow: 0 4px 12px rgba(57, 73, 171, 0.1); }
+    
+    .view-toggle { display: flex; background: var(--surface-2); padding: 4px; border-radius: 20px; border: 1px solid var(--border); }
+    .view-btn { border: none; background: transparent; padding: 8px 16px; border-radius: 16px; color: var(--text-secondary); cursor: pointer; transition: 0.2s; font-size: 14px; }
+    .view-btn.active { background: var(--surface); color: var(--indigo-600); box-shadow: var(--shadow-sm); }
+
+    /* Grid View Cards */
+    .emp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+    .emp-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; text-align: center; transition: all 0.2s; cursor: pointer; position: relative; overflow: hidden; }
+    .emp-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); border-color: var(--indigo-100); }
+    
+    /* NEW: Three Dots Menu Styles */
+    .emp-card-menu-btn { position: absolute; top: 12px; right: 12px; background: transparent; border: none; color: var(--text-muted); padding: 8px; border-radius: 50%; transition: 0.2s; z-index: 2; }
+    .emp-card-menu-btn:hover { background: var(--surface-2); color: var(--text-primary); }
+    
+    .emp-card-dropdown { position: absolute; top: 40px; right: 12px; background: white; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: none; flex-direction: column; z-index: 10; min-width: 140px; overflow: hidden; text-align: left; }
+    .emp-card-dropdown.show { display: flex; }
+    .emp-card-dropdown button { background: none; border: none; padding: 10px 16px; font-size: 13px; color: var(--text-secondary); cursor: pointer; transition: 0.2s; display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; }
+    .emp-card-dropdown button:hover { background: var(--surface-2); color: var(--text-primary); }
+    .emp-card-dropdown button.delete-btn:hover { background: var(--red-light); color: var(--red); }
+
+    .emp-avatar-wrapper { position: relative; width: 80px; height: 80px; margin: 0 auto 16px; }
+    .emp-avatar-wrapper img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; box-shadow: var(--shadow-sm); }
+    .status-dot { position: absolute; bottom: 2px; right: 2px; width: 18px; height: 18px; border-radius: 50%; border: 3px solid var(--surface); display: flex; align-items: center; justify-content: center; font-size: 9px; }
+    .status-online { background: var(--green); }
+    .status-meeting { background: var(--red); }
+    .status-pto { background: var(--blue); color: white; font-size: 8px; }
+    .status-offline { background: var(--text-muted); color: white; font-size: 8px; }
+    
+    .emp-skills { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 12px; }
+    .skill-pill { font-size: 10px; background: var(--surface-2); color: var(--text-secondary); padding: 4px 8px; border-radius: 12px; border: 1px solid var(--border); }
+
+    /* Right Slide-out Profile Drawer */
+    .profile-drawer { position: fixed; top: 0; right: -450px; width: 450px; height: 100vh; background: var(--surface); box-shadow: -4px 0 24px rgba(0,0,0,0.1); z-index: 1050; transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; overflow-y: auto; }
+    .profile-drawer.open { right: 0; }
+    .drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 1040; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+    .drawer-overlay.open { opacity: 1; pointer-events: all; }
+    
+    .drawer-header { padding: 30px; background: linear-gradient(135deg, var(--indigo-800), var(--indigo-600)); color: white; position: relative; }
+    .close-drawer { position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.2); border: none; color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; transition: 0.2s; }
+    .close-drawer:hover { background: rgba(255,255,255,0.3); }
+    .drawer-body { padding: 24px; flex: 1; }
+    
+    .drawer-section { margin-bottom: 24px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; }
+    .drawer-section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 600; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+    .data-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
+    .data-label { color: var(--text-secondary); }
+    .data-value { color: var(--text-primary); font-weight: 500; text-align: right; }
+    
+    .org-node { display: flex; align-items: center; gap: 12px; padding: 8px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border); margin-bottom: 8px; }
+
+    /* Modal Tweaks for large forms */
+    .modal-box.large-modal { width: 750px !important; max-height: 90vh; overflow-y: auto; }
+  </style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-logo">E</div>
+    <div class="brand-name">Empyrean<span>OS</span></div>
+  </div>
+  <nav class="sidebar-nav" id="sidebarNav"></nav>
+  <div class="sidebar-footer">
+    <button class="nav-link" style="color: #ff7b7b;" onclick="logout()">
+      <i class="fa-solid fa-right-from-bracket fa-fw"></i>
+      <span>Sign Out</span>
+    </button>
+  </div>
+</div>
+
+<div class="sub-sidebar" id="subSidebar"></div>
+
+<div class="main-content" id="mainContent">
+  <div class="topbar">
+    <div class="topbar-title">System Hierarchy</div>
+    <div class="topbar-actions">
+      <button class="btn btn-primary" id="addEmpBtnTop" onclick="openModal('addEmployeeModal')" style="display:none;">
+        <i class="fa-solid fa-plus me-2"></i> Add New
+      </button>
+      <img id="topbarAvatar" class="avatar" width="34" height="34">
+      <span id="topbarUserName" style="font-size:13.5px; font-weight:500; color:var(--text-primary);"></span>
+    </div>
+  </div>
+
+  <div class="page-body">
+    <div class="search-hero">
+      <div class="search-input-wrapper">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" class="mega-search" id="directorySearch" placeholder="Search by name, role, department, or skills (e.g. 'Spring Boot', 'Design')..." onkeyup="filterDirectory()">
+      </div>
+      <div class="view-toggle">
+        <button class="view-btn active" id="btnGrid" onclick="setView('grid')"><i class="fa-solid fa-border-all"></i></button>
+        <button class="view-btn" id="btnList" onclick="setView('list')"><i class="fa-solid fa-list"></i></button>
+      </div>
+    </div>
+
+    <div class="emp-grid" id="gridView"></div>
+
+    <div class="card" id="listView" style="display: none;">
+      <div style="overflow-x:auto;">
+        <table class="table align-middle table-hover">
+          <thead>
+            <tr>
+              <th>Profile</th>
+              <th>Department</th>
+              <th>Status</th>
+              <th>Local Time</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="listViewBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeProfileDrawer()"></div>
+<div class="profile-drawer" id="profileDrawer">
+  <div class="drawer-header text-center">
+    <button class="close-drawer" onclick="closeProfileDrawer()"><i class="fa-solid fa-xmark"></i></button>
+    <div class="emp-avatar-wrapper mt-3" style="width: 100px; height: 100px;">
+      <img id="drawAvatar" src="" alt="Avatar">
+      <div id="drawStatusDot" class="status-dot"></div>
+    </div>
+    <h4 id="drawName" style="font-family: var(--font-main); font-weight: 600; margin-bottom: 4px;">John Doe</h4>
+    <p id="drawRole" style="font-size: 13px; opacity: 0.8; margin-bottom: 16px;">Software Engineer</p>
+    
+    <div class="d-flex justify-content-center gap-2">
+      <button class="btn btn-light btn-sm" style="color: var(--indigo-700); border-radius: 20px;" onclick="goToChat()"><i class="fa-solid fa-comment-dots me-2"></i>Message</button>
+      <button class="btn btn-outline-light btn-sm" style="border-radius: 20px;" onclick="scheduleMeeting()"><i class="fa-regular fa-calendar-plus me-2"></i>Schedule</button>
+    </div>
+  </div>
+  
+  <div class="drawer-body">
+    <div class="drawer-section">
+      <div class="drawer-section-title">About & Skills</div>
+      <p id="drawBio" style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px;">Passionate about building scalable systems and clean UI.</p>
+      <div class="emp-skills" id="drawSkills" style="justify-content: flex-start;"></div>
+    </div>
+
+    <div class="drawer-section">
+      <div class="drawer-section-title">Contact & Logistics</div>
+      <div class="data-row"><span class="data-label"><i class="fa-regular fa-envelope me-2"></i>Email</span> <span class="data-value" id="drawEmail"></span></div>
+      <div class="data-row"><span class="data-label"><i class="fa-solid fa-phone me-2"></i>Phone</span> <span class="data-value" id="drawMobile"></span></div>
+      <div class="data-row"><span class="data-label"><i class="fa-regular fa-clock me-2"></i>Local Time</span> <span class="data-value" id="drawTime"></span></div>
+      <div class="data-row"><span class="data-label"><i class="fa-solid fa-building me-2"></i>Department</span> <span class="data-value" id="drawDept"></span></div>
+    </div>
+
+    <div class="drawer-section" id="bossDataSection" style="display: none; border-color: var(--red-light); background: #fffcfc;">
+      <div class="drawer-section-title" style="color: var(--red);"><i class="fa-solid fa-lock me-2"></i>Sensitive HR & Payroll Data</div>
+      <div class="data-row"><span class="data-label">Date of Birth</span> <span class="data-value" id="drawDob"></span></div>
+      <div class="data-row"><span class="data-label">Blood Group</span> <span class="data-value" id="drawBlood"></span></div>
+      <div class="data-row"><span class="data-label">Father's Name</span> <span class="data-value" id="drawFather"></span></div>
+      <div class="data-row"><span class="data-label">PAN Card No.</span> <span class="data-value" id="drawPan"></span></div>
+      <hr style="border-color: var(--border); margin: 8px 0;">
+      <div class="data-row"><span class="data-label">Bank Name</span> <span class="data-value" id="drawBankName"></span></div>
+      <div class="data-row"><span class="data-label">Account No.</span> <span class="data-value" id="drawBankAcc"></span></div>
+      <div class="data-row"><span class="data-label">IFSC Code</span> <span class="data-value" id="drawIfsc"></span></div>
+      <hr style="border-color: var(--border); margin: 8px 0;">
+      <div class="data-row"><span class="data-label">Home Address</span> <span class="data-value" style="font-size: 11px; max-width: 60%; text-align: right;" id="drawAddress"></span></div>
+    </div>
+
+    <div id="adminActionsSection" style="display: none; gap: 10px; flex-direction: column;">
+      <button class="btn btn-outline w-100" id="btnEditEmp"><i class="fa-solid fa-pen me-2"></i>Edit Employee Profile</button>
+      <button class="btn btn-red w-100" id="btnDeleteEmp"><i class="fa-solid fa-trash me-2"></i>Terminate Employee</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="addEmployeeModal">
+  <div class="modal-box large-modal">
+    <div class="modal-header"><h5>Add New Employee</h5><button class="modal-close" onclick="closeModal('addEmployeeModal')"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <form id="addEmployeeForm">
+        <h6 class="text-muted mb-3" style="font-size: 13px;">Basic Information</h6>
+        <div class="form-group"><label class="form-label">Full Name</label><input type="text" class="form-control" id="empName" required></div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;" class="form-group">
+          <div><label class="form-label">Email Address</label><input type="email" class="form-control" id="empEmail" required></div>
+          <div><label class="form-label">Mobile Number</label><input type="text" class="form-control" id="empMobile" required></div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;" class="form-group">
+          <div><label class="form-label">Department</label><select class="form-control form-select" id="empDept" required><option value="Engineering">Engineering</option><option value="HR">HR</option><option value="Sales">Sales</option><option value="Graphic Designing">Graphic Designing</option><option value="Marketing">Marketing</option></select></div>
+          <div><label class="form-label">Designation</label><input type="text" class="form-control" id="empDesignation" required></div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;" class="form-group">
+          <div><label class="form-label">System Role</label><select class="form-control form-select" id="empRole" required><option value="Employee">Employee</option><option value="Manager">Manager</option><option value="Boss">Boss</option></select></div>
+          <div><label class="form-label">Join Date</label><input type="date" class="form-control" id="empJoinDate" required></div>
+        </div>
+        <div class="form-group"><label class="form-label">Temporary Password</label><input type="password" class="form-control" id="empPassword" required></div>
+
+        <hr style="margin: 20px 0;">
+        <h6 class="text-danger mb-3" style="font-size: 13px;"><i class="fa-solid fa-lock me-1"></i> Sensitive Information (Optional)</h6>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;" class="form-group">
+          <div><label class="form-label">Date of Birth</label><input type="date" class="form-control" id="empDob"></div>
+          <div><label class="form-label">Blood Group</label><input type="text" class="form-control" id="empBlood" placeholder="e.g. O+"></div>
+          <div><label class="form-label">Father's Name</label><input type="text" class="form-control" id="empFather" placeholder="Full Name"></div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;" class="form-group">
+          <div><label class="form-label">PAN Card No.</label><input type="text" class="form-control" id="empPan" placeholder="ABCDE1234F"></div>
+          <div><label class="form-label">Bank Name</label><input type="text" class="form-control" id="empBankName" placeholder="e.g. HDFC Bank"></div>
+          <div><label class="form-label">Account No.</label><input type="text" class="form-control" id="empBankAcc" placeholder="Account Number"></div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 2fr; gap:12px;" class="form-group mb-0">
+          <div><label class="form-label">IFSC Code</label><input type="text" class="form-control" id="empIfsc" placeholder="IFSC Code"></div>
+          <div><label class="form-label">Home Address</label><input type="text" class="form-control" id="empAddress" placeholder="Full residential address"></div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('addEmployeeModal')">Cancel</button><button class="btn btn-primary" id="saveEmployeeBtn">Save Employee</button></div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="editEmployeeModal">
+  <div class="modal-box large-modal">
+    <div class="modal-header"><h5>Edit Employee Details</h5><button class="modal-close" onclick="closeModal('editEmployeeModal')"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <form id="editEmployeeForm">
+        <input type="hidden" id="editEmpId">
+        <h6 class="text-muted mb-3" style="font-size: 13px;">Basic Information</h6>
+        <div class="form-group"><label class="form-label">Full Name</label><input type="text" class="form-control" id="editEmpName" required></div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;" class="form-group">
+          <div><label class="form-label">Email Address</label><input type="email" class="form-control" id="editEmpEmail" required></div>
+          <div><label class="form-label">Mobile Number</label><input type="text" class="form-control" id="editEmpMobile" required></div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;" class="form-group">
+          <div><label class="form-label">Department</label><select class="form-control form-select" id="editEmpDept" required><option value="Engineering">Engineering</option><option value="HR">HR</option><option value="Sales">Sales</option><option value="Marketing">Marketing</option><option value="Graphic Designing">Graphic Designing</option></select></div>
+          <div><label class="form-label">Designation</label><input type="text" class="form-control" id="editEmpDesignation" required></div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;" class="form-group">
+          <div><label class="form-label">System Role</label><select class="form-control form-select" id="editEmpRole" required><option value="Employee">Employee</option><option value="Manager">Manager</option><option value="Boss">Boss</option></select></div>
+          <div><label class="form-label">Join Date</label><input type="date" class="form-control" id="editEmpJoinDate" required></div>
+        </div>
+
+        <hr style="margin: 20px 0;">
+        <h6 class="text-danger mb-3" style="font-size: 13px;"><i class="fa-solid fa-lock me-1"></i> Sensitive Information</h6>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;" class="form-group">
+          <div><label class="form-label">Date of Birth</label><input type="date" class="form-control" id="editEmpDob"></div>
+          <div><label class="form-label">Blood Group</label><input type="text" class="form-control" id="editEmpBlood"></div>
+          <div><label class="form-label">Father's Name</label><input type="text" class="form-control" id="editEmpFather"></div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;" class="form-group">
+          <div><label class="form-label">PAN Card No.</label><input type="text" class="form-control" id="editEmpPan"></div>
+          <div><label class="form-label">Bank Name</label><input type="text" class="form-control" id="editEmpBankName"></div>
+          <div><label class="form-label">Account No.</label><input type="text" class="form-control" id="editEmpBankAcc"></div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 2fr; gap:12px;" class="form-group mb-0">
+          <div><label class="form-label">IFSC Code</label><input type="text" class="form-control" id="editEmpIfsc"></div>
+          <div><label class="form-label">Home Address</label><input type="text" class="form-control" id="editEmpAddress"></div>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('editEmployeeModal')">Cancel</button><button class="btn btn-primary" id="saveEditBtn">Save Changes</button></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="sidebar.js"></script>
+<script>
+  const API_BASE_URL = 'http://localhost:8080/employees';
+  const role = localStorage.getItem('userRole');
+  let currentView = 'grid';
+  let fullDirectoryData = []; 
+
+  document.addEventListener('DOMContentLoaded', () => {
+    SidebarBuilder.init();
+
+    // Close dropdowns if clicked outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.emp-card-menu-btn') && !e.target.closest('.emp-card-dropdown')) {
+            document.querySelectorAll('.emp-card-dropdown').forEach(d => d.classList.remove('show'));
+        }
+    });
+
+    if (role === 'Boss') {
+      document.getElementById('addEmpBtnTop').style.display = 'inline-flex';
+      document.getElementById('bossDataSection').style.display = 'block';
+      document.getElementById('adminActionsSection').style.display = 'flex';
+    } else if (role === 'Manager') {
+      document.getElementById('adminActionsSection').style.display = 'flex';
+      document.getElementById('btnDeleteEmp').style.display = 'none'; 
+    }
+
+    loadEmployees();
+  });
+
+  function enhanceEmployeeData(emp) {
+    let skills = ['Communication', 'Teamwork'];
+    if (emp.department === 'Engineering') skills = ['Java', 'Spring Boot', 'React', 'AWS'];
+    if (emp.department === 'Graphic Designing') skills = ['Figma', 'Adobe CC', 'UI/UX'];
+    
+    return {
+      ...emp,
+      status: emp.status || 'Offline',
+      skills: skills,
+      timezone: 'IST (UTC +5:30)',
+      dob: emp.dob || 'Not Provided',
+      bloodGroup: emp.bloodGroup || 'Not Provided',
+      fatherName: emp.fatherName || 'Not Provided',
+      pan: emp.panCard || 'Not Provided',
+      bankName: emp.bankName || 'Not Provided',
+      bankAcc: emp.bankAccount || 'Not Provided',
+      ifsc: emp.ifscCode || 'Not Provided',
+      address: emp.homeAddress || 'Not Provided'
+    };
+  }
+
+  async function loadEmployees() {
+    try {
+      const response = await fetch(API_BASE_URL);
+      const rawUsers = await response.json();
+      
+      fullDirectoryData = rawUsers
+        .filter(user => user.role !== 'Boss' || role === 'Boss') 
+        .map(enhanceEmployeeData);
+      
+      renderDirectory(fullDirectoryData);
+    } catch (error) { console.error("Error:", error); }
+  }
+
+  function setView(mode) {
+    currentView = mode;
+    document.getElementById('btnGrid').classList.toggle('active', mode === 'grid');
+    document.getElementById('btnList').classList.toggle('active', mode === 'list');
+    document.getElementById('gridView').style.display = mode === 'grid' ? 'grid' : 'none';
+    document.getElementById('listView').style.display = mode === 'list' ? 'block' : 'none';
+    filterDirectory(); 
+  }
+
+  function getStatusVisuals(status) {
+    if (status === 'Online') return { class: 'status-online', icon: '' };
+    if (status === 'Meeting') return { class: 'status-meeting', icon: '' };
+    if (status === 'Offline') return { class: 'status-offline', icon: '<i class="fa-solid fa-moon"></i>' };
+    if (status === 'PTO') return { class: 'status-pto', icon: '<i class="fa-solid fa-plane"></i>' };
+    return { class: 'status-offline', icon: '<i class="fa-solid fa-moon"></i>' };
+  }
+
+  function toggleCardMenu(event, id) {
+      event.stopPropagation(); // Prevent opening the drawer
+      document.querySelectorAll('.emp-card-dropdown').forEach(d => {
+          if(d.id !== `dropdown-${id}`) d.classList.remove('show');
+      });
+      document.getElementById(`dropdown-${id}`).classList.toggle('show');
+  }
+
+  function renderDirectory(data) {
+    const grid = document.getElementById('gridView');
+    const list = document.getElementById('listViewBody');
+    grid.innerHTML = '';
+    list.innerHTML = '';
+
+    if (data.length === 0) {
+      grid.innerHTML = `<div class="col-12 text-center text-muted py-5" style="grid-column: 1/-1;">No employees match your search.</div>`;
+      list.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-5">No employees match your search.</td></tr>`;
+      return;
+    }
+
+    data.forEach(emp => {
+      const sVis = getStatusVisuals(emp.status);
+      const roleBadge = emp.role === 'Manager' ? 'badge-indigo' : 'badge-gray';
+      const skillsHtml = emp.skills.slice(0,3).map(s => `<span class="skill-pill">${s}</span>`).join('');
+      const empJson = encodeURIComponent(JSON.stringify(emp));
+
+      // Build Three Dots Menu (Only show edit/delete if Boss or Manager)
+      let menuHtml = '';
+      if (role === 'Boss' || role === 'Manager') {
+          menuHtml = `
+            <button class="emp-card-menu-btn" onclick="toggleCardMenu(event, ${emp.id})">
+                <i class="fa-solid fa-ellipsis-vertical"></i>
+            </button>
+            <div class="emp-card-dropdown" id="dropdown-${emp.id}">
+                <button onclick="event.stopPropagation(); downloadEmployeePDF('${empJson}')"><i class="fa-solid fa-file-pdf"></i> Download PDF</button>
+                <button onclick="event.stopPropagation(); document.getElementById('dropdown-${emp.id}').classList.remove('show'); openEditModal(${emp.id})"><i class="fa-solid fa-pen"></i> Edit Profile</button>
+                ${role === 'Boss' ? `<button class="delete-btn" onclick="event.stopPropagation(); document.getElementById('dropdown-${emp.id}').classList.remove('show'); deleteEmployee(${emp.id})"><i class="fa-solid fa-trash"></i> Terminate</button>` : ''}
+            </div>
+          `;
+      } else {
+          // Normal employees can only download the public profile PDF
+          menuHtml = `
+            <button class="emp-card-menu-btn" onclick="toggleCardMenu(event, ${emp.id})">
+                <i class="fa-solid fa-ellipsis-vertical"></i>
+            </button>
+            <div class="emp-card-dropdown" id="dropdown-${emp.id}">
+                <button onclick="event.stopPropagation(); downloadEmployeePDF('${empJson}')"><i class="fa-solid fa-file-pdf"></i> Download Profile</button>
+            </div>
+          `;
+      }
+
+      grid.innerHTML += `
+        <div class="emp-card" onclick="openProfileDrawer('${empJson}')">
+          ${menuHtml}
+          <div class="emp-avatar-wrapper">
+            <img src="${avatarUrl(emp.name)}" alt="${emp.name}">
+            <div class="status-dot ${sVis.class}" title="${emp.status}">${sVis.icon}</div>
+          </div>
+          <h6 style="font-family: var(--font-main); font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">${emp.name}</h6>
+          <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 12px;">${emp.designation || 'Staff'} &bull; ${emp.department}</p>
+          <div class="emp-skills">${skillsHtml}</div>
+        </div>
+      `;
+
+      list.innerHTML += `
+        <tr style="cursor: pointer;" onclick="openProfileDrawer('${empJson}')">
+          <td>
+            <div class="user-chip">
+              <div style="position: relative;">
+                <img src="${avatarUrl(emp.name)}" class="avatar" width="40" height="40">
+                <div class="status-dot ${sVis.class}" style="width: 12px; height: 12px;">${sVis.icon}</div>
+              </div>
+              <div>
+                <div class="user-chip-name">${emp.name} <span class="badge ${roleBadge} ms-1" style="font-size:9px; padding: 2px 5px;">${emp.role}</span></div>
+                <div class="user-chip-sub">${emp.designation || 'Staff'}</div>
+              </div>
+            </div>
+          </td>
+          <td><span class="badge badge-gray" style="border: 1px solid var(--border);">${emp.department}</span></td>
+          <td><span style="font-size: 12px; color: var(--text-secondary);">${emp.status}</span></td>
+          <td><span style="font-size: 12px; color: var(--text-secondary);"><i class="fa-regular fa-clock me-1"></i>${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span></td>
+          <td><button class="btn btn-sm btn-outline-light" style="color: var(--indigo-600);" onclick="event.stopPropagation(); goToChat()"><i class="fa-solid fa-comment-dots"></i></button></td>
+        </tr>
+      `;
+    });
+  }
+
+  function filterDirectory() {
+    const term = document.getElementById('directorySearch').value.toLowerCase();
+    const filtered = fullDirectoryData.filter(emp => {
+      const searchableStr = `${emp.name} ${emp.email} ${emp.department} ${emp.role} ${emp.skills.join(' ')}`.toLowerCase();
+      return searchableStr.includes(term);
+    });
+    renderDirectory(filtered);
+  }
+
+  function openProfileDrawer(empJsonStr) {
+    const emp = JSON.parse(decodeURIComponent(empJsonStr));
+    const sVis = getStatusVisuals(emp.status);
+
+    document.getElementById('drawAvatar').src = avatarUrl(emp.name);
+    document.getElementById('drawStatusDot').className = `status-dot ${sVis.class}`;
+    document.getElementById('drawStatusDot').innerHTML = sVis.icon;
+    document.getElementById('drawName').textContent = emp.name;
+    document.getElementById('drawRole').textContent = `${emp.designation || 'Staff'} at ${emp.department}`;
+    document.getElementById('drawSkills').innerHTML = emp.skills.map(s => `<span class="skill-pill" style="background: var(--surface);">${s}</span>`).join('');
+    document.getElementById('drawEmail').textContent = emp.email;
+    document.getElementById('drawMobile').textContent = emp.mobile || 'Not provided';
+    document.getElementById('drawTime').textContent = `${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} ${emp.timezone}`;
+    document.getElementById('drawDept').textContent = emp.department;
+
+    if (role === 'Boss') {
+      document.getElementById('drawDob').textContent = emp.dob;
+      document.getElementById('drawBlood').textContent = emp.bloodGroup;
+      document.getElementById('drawFather').textContent = emp.fatherName;
+      document.getElementById('drawPan').textContent = emp.pan;
+      document.getElementById('drawBankName').textContent = emp.bankName;
+      document.getElementById('drawBankAcc').textContent = emp.bankAcc;
+      document.getElementById('drawIfsc').textContent = emp.ifsc;
+      document.getElementById('drawAddress').textContent = emp.address;
+    }
+
+    document.getElementById('btnEditEmp').onclick = () => openEditModal(emp.id);
+    document.getElementById('btnDeleteEmp').onclick = () => deleteEmployee(emp.id);
+
+    document.getElementById('drawerOverlay').classList.add('open');
+    document.getElementById('profileDrawer').classList.add('open');
+  }
+
+  function closeProfileDrawer() {
+    document.getElementById('drawerOverlay').classList.remove('open');
+    document.getElementById('profileDrawer').classList.remove('open');
+  }
+
+  function goToChat() { window.location.href = 'chat.html'; }
+  function scheduleMeeting() { window.location.href = 'calendar.html'; }
+
+  // --- PDF GENERATOR (jsPDF) ---
+  function downloadEmployeePDF(empJsonStr) {
+      // Hide dropdown after click
+      document.querySelectorAll('.emp-card-dropdown').forEach(d => d.classList.remove('show'));
+
+      const emp = JSON.parse(decodeURIComponent(empJsonStr));
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(22);
+      doc.setTextColor(26, 31, 94); // Indigo 900
+      doc.text("EmpyreanOS", 14, 20);
+      
+      doc.setFontSize(14);
+      doc.setTextColor(100, 100, 100);
+      doc.text("Employee Profile Summary", 14, 30);
+
+      doc.setDrawColor(226, 229, 240);
+      doc.line(14, 35, 196, 35);
+
+      // Basic Information
+      doc.autoTable({
+          startY: 45,
+          head: [['Basic Information', '']],
+          body: [
+              ['Full Name', emp.name],
+              ['Department', emp.department],
+              ['Designation', emp.designation || 'Staff'],
+              ['System Role', emp.role],
+              ['Email Address', emp.email || 'Not Provided'],
+              ['Mobile Number', emp.mobile || 'Not Provided'],
+              ['Join Date', emp.joinDate || 'Not Provided'],
+              ['Status', emp.status || 'Offline']
+          ],
+          theme: 'grid',
+          headStyles: { fillColor: [57, 73, 171] }, 
+          styles: { fontSize: 10 }
+      });
+
+      // Sensitive Information (Only printed if Boss)
+      if (role === 'Boss') {
+          let finalY = doc.lastAutoTable.finalY + 15;
+          doc.autoTable({
+              startY: finalY,
+              head: [['Sensitive HR Data', '']],
+              body: [
+                  ['Date of Birth', emp.dob || 'Not Provided'],
+                  ['Blood Group', emp.bloodGroup || 'Not Provided'],
+                  ['Father\'s Name', emp.fatherName || 'Not Provided'],
+                  ['PAN Card No.', emp.pan || 'Not Provided'],
+                  ['Bank Name', emp.bankName || 'Not Provided'],
+                  ['Account No.', emp.bankAcc || 'Not Provided'],
+                  ['IFSC Code', emp.ifsc || 'Not Provided'],
+                  ['Home Address', emp.address || 'Not Provided']
+              ],
+              theme: 'grid',
+              headStyles: { fillColor: [217, 48, 37] }, // Red for sensitive data
+              styles: { fontSize: 10 }
+          });
+      }
+
+      // Footer
+      doc.setTextColor(150, 150, 150);
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Generated on: ${new Date().toLocaleString()}`, 105, 280, { align: 'center' });
+
+      doc.save(`${emp.name.replace(' ', '_')}_Profile.pdf`);
+  }
+
+  // --- SAVE REAL DATA ---
+  document.getElementById('saveEmployeeBtn').addEventListener('click', async function() {
+    const data = {
+      name: document.getElementById('empName').value, email: document.getElementById('empEmail').value,
+      mobile: document.getElementById('empMobile').value, department: document.getElementById('empDept').value,
+      designation: document.getElementById('empDesignation').value, role: document.getElementById('empRole').value,
+      joinDate: document.getElementById('empJoinDate').value, password: document.getElementById('empPassword').value,
+      dob: document.getElementById('empDob').value, bloodGroup: document.getElementById('empBlood').value,
+      fatherName: document.getElementById('empFather').value, panCard: document.getElementById('empPan').value,
+      bankName: document.getElementById('empBankName').value, bankAccount: document.getElementById('empBankAcc').value,
+      ifscCode: document.getElementById('empIfsc').value, homeAddress: document.getElementById('empAddress').value
+    };
+    try {
+      const response = await fetch(API_BASE_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+      if (response.ok) { closeModal('addEmployeeModal'); document.getElementById('addEmployeeForm').reset(); loadEmployees(); }
+    } catch (error) { console.error(error); }
+  });
+
+  async function openEditModal(id) {
+    closeProfileDrawer();
+    try {
+      const response = await fetch(`${API_BASE_URL}/${id}`);
+      const emp = await response.json();
+      
+      document.getElementById('editEmpId').value = emp.id;
+      document.getElementById('editEmpName').value = emp.name; document.getElementById('editEmpEmail').value = emp.email;
+      document.getElementById('editEmpMobile').value = emp.mobile || ''; document.getElementById('editEmpDept').value = emp.department;
+      document.getElementById('editEmpDesignation').value = emp.designation || ''; document.getElementById('editEmpRole').value = emp.role || 'Employee';
+      document.getElementById('editEmpJoinDate').value = emp.joinDate || ''; 
+
+      document.getElementById('editEmpDob').value = emp.dob || '';
+      document.getElementById('editEmpBlood').value = emp.bloodGroup || '';
+      document.getElementById('editEmpFather').value = emp.fatherName || '';
+      document.getElementById('editEmpPan').value = emp.panCard || '';
+      document.getElementById('editEmpBankName').value = emp.bankName || '';
+      document.getElementById('editEmpBankAcc').value = emp.bankAccount || '';
+      document.getElementById('editEmpIfsc').value = emp.ifscCode || '';
+      document.getElementById('editEmpAddress').value = emp.homeAddress || '';
+
+      openModal('editEmployeeModal');
+    } catch (error) { alert("Could not load details."); }
+  }
+
+  document.getElementById('saveEditBtn').addEventListener('click', async function() {
+    const id = document.getElementById('editEmpId').value;
+    const updatedData = { 
+      name: document.getElementById('editEmpName').value, email: document.getElementById('editEmpEmail').value, 
+      mobile: document.getElementById('editEmpMobile').value, department: document.getElementById('editEmpDept').value,
+      designation: document.getElementById('editEmpDesignation').value, role: document.getElementById('editEmpRole').value,
+      joinDate: document.getElementById('editEmpJoinDate').value,
+      dob: document.getElementById('editEmpDob').value, bloodGroup: document.getElementById('editEmpBlood').value,
+      fatherName: document.getElementById('editEmpFather').value, panCard: document.getElementById('editEmpPan').value,
+      bankName: document.getElementById('editEmpBankName').value, bankAccount: document.getElementById('editEmpBankAcc').value,
+      ifscCode: document.getElementById('editEmpIfsc').value, homeAddress: document.getElementById('editEmpAddress').value
+    };
+    try {
+      const response = await fetch(`${API_BASE_URL}/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(updatedData) });
+      if (response.ok) { closeModal('editEmployeeModal'); loadEmployees(); }
+    } catch (error) { console.error(error); }
+  });
+
+  async function deleteEmployee(id) {
+    if (confirm("Terminate this employee from the system?")) {
+      try {
+        await fetch(`${API_BASE_URL}/${id}`, { method: 'DELETE' });
+        closeProfileDrawer();
+        loadEmployees(); 
+      } catch (error) { console.error(error); }
+    }
+  }
+</script>
+</body>
+</html>

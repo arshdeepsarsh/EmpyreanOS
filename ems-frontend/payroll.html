@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payroll Management — EmpyreanOS</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-logo">E</div>
+    <div class="brand-name">Empyrean<span>OS</span></div>
+  </div>
+  <nav class="sidebar-nav" id="sidebarNav"></nav>
+  <div class="sidebar-footer">
+    <button class="nav-link" style="color: #ff7b7b;" onclick="logout()">
+      <i class="fa-solid fa-right-from-bracket fa-fw"></i>
+      <span>Sign Out</span>
+    </button>
+  </div>
+</div>
+
+<div class="sub-sidebar" id="subSidebar"></div>
+
+<div class="main-content" id="mainContent">
+  <div class="topbar">
+    <div class="topbar-title" id="pageTitle">Payroll Management</div>
+    <div class="topbar-actions">
+      <button class="btn btn-outline" id="exportCsvBtn" onclick="exportPayrollCSV()" style="display: none; padding: 8px 16px;">
+        <i class="fa-solid fa-file-csv me-2"></i> Export to CSV
+      </button>
+
+      <button class="btn btn-primary" id="generateBtn" onclick="openModal('generatePayrollModal')">
+        <i class="fa-solid fa-money-check-dollar"></i> Generate Payroll
+      </button>
+      <img id="topbarAvatar" class="avatar" width="34" height="34">
+      <span id="topbarUserName" style="font-size:13.5px; font-weight:500; color:var(--text-primary);"></span>
+    </div>
+  </div>
+
+  <div class="page-body">
+    
+    <div class="stat-row" id="bossStatsRow" style="display:none;">
+      <div class="stat-card">
+        <div class="stat-icon indigo"><i class="fa-solid fa-vault"></i></div>
+        <div class="stat-info">
+          <h3 id="totalNetPayout">$0.00</h3>
+          <p>Total Net Payout</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon green"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+        <div class="stat-info">
+          <h3 id="totalBonuses">$0.00</h3>
+          <p>Total Bonuses Awarded</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon red"><i class="fa-solid fa-file-invoice"></i></div>
+        <div class="stat-info">
+          <h3 id="totalDeductions">$0.00</h3>
+          <p>Total Tax & Deductions</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="stat-row" id="employeeStatsRow" style="display:none;">
+      <div class="stat-card" style="background: linear-gradient(135deg, var(--indigo-800), var(--indigo-600)); color: white; border: none;">
+        <div class="stat-icon" style="background: rgba(255,255,255,0.2); color: white;"><i class="fa-solid fa-piggy-bank"></i></div>
+        <div class="stat-info">
+          <h3 id="empLifetimeNet" style="font-family: var(--font-main); font-weight: 700;">$0.00</h3>
+          <p style="color: rgba(255,255,255,0.8); font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Lifetime Net Earnings</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon red"><i class="fa-solid fa-building-columns"></i></div>
+        <div class="stat-info">
+          <h3 id="empLifetimeTax">$0.00</h3>
+          <p>Lifetime Tax Deducted (TDS)</p>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon yellow"><i class="fa-solid fa-leaf"></i></div>
+        <div class="stat-info">
+          <h3 id="empLifetimePF">$0.00</h3>
+          <p>Lifetime PF Contribution</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom: 20px;" id="filterBar">
+      <div class="card-body" style="display: flex; gap: 15px; align-items: center; padding: 15px 20px;">
+        <div style="flex: 1;" id="nameSearchContainer">
+          <input type="text" id="searchEmpName" class="form-control" placeholder="Search employee by name...">
+        </div>
+        <div style="width: 200px;">
+          <input type="month" id="filterSalaryMonth" class="form-control">
+        </div>
+        <button class="btn btn-outline" onclick="clearFilters()">
+          <i class="fa-solid fa-rotate-right"></i> Reset Filter
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h6><i class="fa-solid fa-file-invoice-dollar text-indigo me-2"></i> <span id="tableTitle">Salary Records</span></h6>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="table align-middle text-center">
+          <thead>
+            <tr>
+              <th style="text-align: left;" id="colEmpName">Employee Name</th>
+              <th>Salary Month</th>
+              <th>Generated On</th>
+              <th>Base Salary</th>
+              <th class="text-success">+ Bonus</th>
+              <th class="text-danger">- Deductions (Total)</th>
+              <th style="font-weight: 600;">Net Transferred</th>
+              <th>Status</th>
+              <th id="actionColumn">Action</th>
+            </tr>
+          </thead>
+          <tbody id="payrollTableBody">
+            </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="generatePayrollModal">
+  <div class="modal-box" style="width: 600px;">
+    <div class="modal-header">
+      <h5>Process Monthly Salary</h5>
+      <button class="modal-close" onclick="closeModal('generatePayrollModal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      
+      <div style="background: var(--surface-2); padding: 8px 12px; border-radius: 6px; margin-bottom: 15px; display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); border: 1px solid var(--border);">
+        <span><i class="fa-solid fa-calendar-day"></i> <span id="modalDate"></span></span>
+        <span><i class="fa-regular fa-clock"></i> <span id="modalTime"></span></span>
+      </div>
+
+      <form id="payrollForm">
+        <h6 style="margin-bottom: 10px; font-size: 13px; color: var(--text-primary);">Employee Details</h6>
+        <div style="display:grid; grid-template-columns: 2fr 1fr; gap:12px; margin-bottom: 20px;">
+          <div>
+            <label class="form-label">Select Employee</label>
+            <select class="form-control form-select" id="payEmpSelect" required>
+              <option value="" selected disabled>Loading employees...</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Salary Month</label>
+            <input type="month" class="form-control" id="payMonth" required>
+          </div>
+        </div>
+
+        <h6 style="margin-bottom: 10px; font-size: 13px; color: var(--text-primary);">Earnings</h6>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom: 20px;">
+          <div>
+            <label class="form-label">Base Salary ($)</label>
+            <input type="number" class="form-control" id="payBase" placeholder="e.g. 5000" required>
+          </div>
+          <div>
+            <label class="form-label text-success">Bonus Amount ($)</label>
+            <input type="number" class="form-control" id="payBonus" placeholder="0" value="0">
+          </div>
+        </div>
+
+        <h6 style="margin-bottom: 10px; font-size: 13px; color: var(--text-primary); border-top: 1px solid var(--border); padding-top: 15px;">Deductions Breakdown</h6>
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px; margin-bottom: 20px;">
+          <div>
+            <label class="form-label text-danger">Income Tax (TDS) $</label>
+            <input type="number" class="form-control deduct-input" id="payTax" placeholder="0" value="0">
+          </div>
+          <div>
+            <label class="form-label text-danger">Provident Fund (PF) $</label>
+            <input type="number" class="form-control deduct-input" id="payPF" placeholder="0" value="0">
+          </div>
+          <div>
+            <label class="form-label text-danger">Medical Ins. $</label>
+            <input type="number" class="form-control deduct-input" id="payMedical" placeholder="0" value="0">
+          </div>
+        </div>
+
+        <div style="background: var(--surface-3); padding: 20px; border-radius: var(--radius-md); text-align: center; margin-top: 20px; border: 1px dashed var(--border);">
+          <h6 class="text-muted" style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;">Calculated Net Salary</h6>
+          <h2 id="previewNetSalary" style="color: var(--green); margin: 0; font-family: var(--font-main); font-weight: 600;">$0.00</h2>
+        </div>
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('generatePayrollModal')">Cancel</button>
+      <button class="btn btn-primary" id="savePayrollBtn">Save & Generate</button>
+    </div>
+  </div>
+</div>
+
+<script src="sidebar.js"></script>
+<script>
+  const PAYROLL_API_URL = 'http://localhost:8080/salary';
+  const EMP_API_URL = 'http://localhost:8080/employees';
+  const role = localStorage.getItem('userRole') || 'Employee'; 
+  const currentUser = localStorage.getItem('userName') || 'John Doe'; 
+  
+  let globalPayrollData = [];
+  let currentFilteredData = []; 
+  let clockInterval;
+  let isPersonalView = false; // Flag to track if user is looking at their own payslips
+
+  document.addEventListener('DOMContentLoaded', () => {
+    SidebarBuilder.init();
+    enforceRoleAccess();
+    loadPayrollRecords();
+    
+    document.getElementById('filterSalaryMonth').value = ""; 
+    document.getElementById('searchEmpName').addEventListener('input', applyFilters);
+    document.getElementById('filterSalaryMonth').addEventListener('input', applyFilters);
+
+    startLiveClock();
+  });
+
+  function enforceRoleAccess() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const viewMode = urlParams.get('view');
+
+    // If Employee OR if Manager clicked "My Payslips" in sidebar
+    if (role === 'Employee' || viewMode === 'personal') {
+      isPersonalView = true;
+      document.getElementById('pageTitle').innerText = "My Payslips";
+      document.getElementById('tableTitle').innerText = "My Payment History";
+      
+      // Hide Boss Controls
+      document.getElementById('generateBtn').style.display = 'none';
+      document.getElementById('bossStatsRow').style.display = 'none';
+      document.getElementById('nameSearchContainer').style.display = 'none'; 
+      document.getElementById('exportCsvBtn').style.display = 'none';
+      document.getElementById('colEmpName').style.display = 'none'; 
+      
+      // Show Employee Lifetime Stats
+      document.getElementById('employeeStatsRow').style.display = 'grid';
+
+    } else {
+      // Boss / Admin View
+      isPersonalView = false;
+      document.getElementById('bossStatsRow').style.display = 'grid';
+      document.getElementById('exportCsvBtn').style.display = 'inline-flex';
+      
+      loadEmployeesForDropdown();
+      document.getElementById('payMonth').value = new Date().toISOString().substring(0, 7);
+    }
+  }
+
+  function startLiveClock() {
+    const updateClock = () => {
+      const now = new Date();
+      document.getElementById('modalDate').innerText = now.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' });
+      document.getElementById('modalTime').innerText = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    };
+    updateClock();
+    clockInterval = setInterval(updateClock, 1000);
+  }
+
+  async function loadEmployeesForDropdown() {
+    try {
+      const response = await fetch(EMP_API_URL);
+      const allUsers = await response.json();
+      const staffOnly = allUsers.filter(user => user.role !== 'Boss');
+      
+      const selectElement = document.getElementById('payEmpSelect');
+      selectElement.innerHTML = '<option value="" selected disabled>Select Employee...</option>';
+      staffOnly.forEach(emp => { selectElement.innerHTML += `<option value="${emp.id}">${emp.name}</option>`; });
+    } catch (error) { console.error("Error loading employees:", error); }
+  }
+
+  async function loadPayrollRecords() {
+    try {
+      const response = await fetch(PAYROLL_API_URL);
+      globalPayrollData = await response.json();
+      globalPayrollData.reverse(); 
+      applyFilters();
+    } catch (error) { console.error("Error loading payroll:", error); }
+  }
+
+  function applyFilters() {
+    let nameQuery = document.getElementById('searchEmpName').value.toLowerCase();
+    const monthQuery = document.getElementById('filterSalaryMonth').value;
+
+    // Force query to current user if personal view
+    if (isPersonalView) {
+      nameQuery = currentUser.toLowerCase();
+    }
+
+    currentFilteredData = globalPayrollData.filter(record => {
+      const matchesName = record.employeeName.toLowerCase().includes(nameQuery);
+      const matchesMonth = monthQuery ? record.salaryMonth === monthQuery : true;
+      return matchesName && matchesMonth;
+    });
+
+    renderTable(currentFilteredData);
+    
+    // Update the appropriate stats row
+    if (isPersonalView) {
+        updateEmployeeStats(globalPayrollData.filter(r => r.employeeName.toLowerCase() === currentUser.toLowerCase()));
+    } else {
+        updateExecutiveStats(currentFilteredData);
+    }
+  }
+
+  function clearFilters() {
+    document.getElementById('searchEmpName').value = '';
+    document.getElementById('filterSalaryMonth').value = '';
+    applyFilters();
+  }
+
+  function updateExecutiveStats(records) {
+    let totalNet = 0; let totalBonus = 0; let totalDeductions = 0;
+    records.forEach(r => { totalNet += r.netSalary; totalBonus += r.bonus; totalDeductions += r.deductions; });
+    const formatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+    document.getElementById('totalNetPayout').innerText = formatter.format(totalNet);
+    document.getElementById('totalBonuses').innerText = formatter.format(totalBonus);
+    document.getElementById('totalDeductions').innerText = formatter.format(totalDeductions);
+  }
+
+  function updateEmployeeStats(myRecords) {
+    let lifetimeNet = 0; let lifetimeTax = 0; let lifetimePF = 0;
+    myRecords.forEach(r => { 
+        lifetimeNet += (r.netSalary || 0); 
+        lifetimeTax += (r.taxAmount || 0); 
+        lifetimePF += (r.pfAmount || 0); 
+    });
+    const formatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+    document.getElementById('empLifetimeNet').innerText = formatter.format(lifetimeNet);
+    document.getElementById('empLifetimeTax').innerText = formatter.format(lifetimeTax);
+    document.getElementById('empLifetimePF').innerText = formatter.format(lifetimePF);
+  }
+
+  function renderTable(records) {
+    const tbody = document.getElementById('payrollTableBody');
+    tbody.innerHTML = ''; 
+
+    if (records.length === 0) {
+      const colSpan = isPersonalView ? 8 : 9;
+      tbody.innerHTML = `<tr><td colspan="${colSpan}" class="text-center text-muted" style="padding: 30px;">No matching payroll records found.</td></tr>`;
+      return;
+    }
+
+    const formatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+
+    records.forEach(record => {
+      const avatarGen = `https://ui-avatars.com/api/?name=${encodeURIComponent(record.employeeName)}&background=random`;
+      const displayDate = record.generatedAt ? new Date(record.generatedAt).toLocaleString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}) : new Date().toLocaleDateString();
+
+      const taxAmount = record.taxAmount || 0;
+      const pfAmount = record.pfAmount || 0;
+      const medicalAmount = record.medicalAmount || 0;
+      const recordJson = encodeURIComponent(JSON.stringify(record));
+
+      let rowHtml = `<tr>`;
+      
+      // Only show employee name column if Boss/Admin
+      if (!isPersonalView) {
+          rowHtml += `
+          <td style="text-align: left;">
+            <div class="user-chip">
+              <img src="${avatarGen}" class="avatar" width="32" height="32">
+              <div class="user-chip-name">${record.employeeName}</div>
+            </div>
+          </td>`;
+      }
+
+      rowHtml += `
+          <td><span class="badge badge-gray" style="background: var(--surface-3); border: 1px solid var(--border); font-size: 13px;">${record.salaryMonth}</span></td>
+          <td style="font-size: 12px; color: var(--text-secondary);">${displayDate}</td>
+          <td style="font-weight: 500;">${formatter.format(record.baseSalary)}</td>
+          <td class="text-success" style="font-weight: 500;">+ ${formatter.format(record.bonus)}</td>
+          <td class="text-danger" style="font-weight: 500;" title="Tax: $${taxAmount} | PF: $${pfAmount} | Med: $${medicalAmount}">
+            - ${formatter.format(record.deductions)} <i class="fa-solid fa-circle-info" style="font-size:10px; color:var(--text-muted);"></i>
+          </td>
+          <td style="font-weight: 600; color: var(--indigo-700); font-size: 15px;">${formatter.format(record.netSalary)}</td>
+          <td><span class="badge badge-green"><i class="fa-solid fa-check me-1"></i> ${record.status || 'Paid'}</span></td>
+          <td><button class="btn btn-outline btn-sm" style="color: var(--indigo-600); border-color: var(--indigo-200);" onclick="downloadPayslip('${recordJson}')"><i class="fa-solid fa-file-pdf me-1"></i> PDF</button></td>
+      </tr>`;
+      
+      tbody.innerHTML += rowHtml;
+    });
+  }
+
+  // --- CSV EXPORT LOGIC ---
+  function exportPayrollCSV() {
+      if (currentFilteredData.length === 0) {
+          alert("No data to export.");
+          return;
+      }
+
+      const headers = [
+          "Employee ID", "Employee Name", "Salary Month", "Base Salary ($)", "Bonus ($)", 
+          "Tax (TDS) ($)", "Provident Fund (PF) ($)", "Medical Insurance ($)", 
+          "Total Deductions ($)", "Net Salary ($)", "Status", "Generated On"
+      ];
+
+      const csvRows = currentFilteredData.map(r => {
+          return [
+              r.employeeId || 'N/A', `"${r.employeeName}"`, r.salaryMonth, r.baseSalary || 0,
+              r.bonus || 0, r.taxAmount || 0, r.pfAmount || 0, r.medicalAmount || 0,
+              r.deductions || 0, r.netSalary || 0, r.status || 'Paid',
+              r.generatedAt ? new Date(r.generatedAt).toLocaleString() : 'N/A'
+          ].join(',');
+      });
+
+      const csvContent = [headers.join(','), ...csvRows].join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      
+      const filterMonth = document.getElementById('filterSalaryMonth').value;
+      const fileName = filterMonth ? `Payroll_Ledger_${filterMonth}.csv` : `Payroll_Ledger_All.csv`;
+
+      link.setAttribute("href", url); link.setAttribute("download", fileName);
+      document.body.appendChild(link); link.click(); document.body.removeChild(link);
+  }
+
+  const baseInput = document.getElementById('payBase');
+  const bonusInput = document.getElementById('payBonus');
+  const taxInput = document.getElementById('payTax');
+  const pfInput = document.getElementById('payPF');
+  const medicalInput = document.getElementById('payMedical');
+  const previewText = document.getElementById('previewNetSalary');
+
+  function calculatePreview() {
+    const base = parseFloat(baseInput.value) || 0;
+    const bonus = parseFloat(bonusInput.value) || 0;
+    const tax = parseFloat(taxInput.value) || 0;
+    const pf = parseFloat(pfInput.value) || 0;
+    const med = parseFloat(medicalInput.value) || 0;
+    const totalDeductions = tax + pf + med;
+
+    const net = base + bonus - totalDeductions;
+    const formatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+    previewText.innerText = formatter.format(net);
+  }
+
+  [baseInput, bonusInput, taxInput, pfInput, medicalInput].forEach(input => {
+    input.addEventListener('input', calculatePreview);
+  });
+
+  document.getElementById('savePayrollBtn').addEventListener('click', async () => {
+    const empSelect = document.getElementById('payEmpSelect');
+    const month = document.getElementById('payMonth').value;
+    const base = parseFloat(baseInput.value);
+    const bonus = parseFloat(bonusInput.value) || 0;
+    const tax = parseFloat(taxInput.value) || 0;
+    const pf = parseFloat(pfInput.value) || 0;
+    const medical = parseFloat(medicalInput.value) || 0;
+    const totalDeductions = tax + pf + medical;
+
+    if (!empSelect.value || !month || isNaN(base)) {
+      alert("Please select an employee, month, and enter a valid base salary."); return;
+    }
+
+    const payrollData = {
+      employeeId: empSelect.value,
+      employeeName: empSelect.options[empSelect.selectedIndex].text,
+      salaryMonth: month,
+      baseSalary: base,
+      bonus: bonus,
+      deductions: totalDeductions, 
+      taxAmount: tax,              
+      pfAmount: pf,
+      medicalAmount: medical,
+      netSalary: (base + bonus - totalDeductions),
+      status: 'Paid',
+      generatedAt: new Date().toISOString()
+    };
+
+    try {
+      const response = await fetch(`${PAYROLL_API_URL}/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payrollData)
+      });
+
+      if (response.ok) {
+        closeModal('generatePayrollModal');
+        document.getElementById('payrollForm').reset();
+        previewText.innerText = "$0.00"; 
+        loadPayrollRecords(); 
+      } else {
+        alert("Error: Could not generate payroll. " + await response.text());
+      }
+    } catch (error) { console.error("Connection error:", error); }
+  });
+
+  function downloadPayslip(recordJsonEncoded) {
+    const record = JSON.parse(decodeURIComponent(recordJsonEncoded));
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const formatter = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+
+    const tax = record.taxAmount || 0;
+    const pf = record.pfAmount || 0;
+    const medical = record.medicalAmount || 0;
+    
+    let otherDeductions = 0;
+    if (record.deductions > 0 && tax === 0 && pf === 0 && medical === 0) {
+        otherDeductions = record.deductions;
+    }
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(24);
+    doc.setTextColor(26, 31, 94); 
+    doc.text("EmpyreanOS", 14, 22);
+    
+    doc.setFontSize(14);
+    doc.setTextColor(100, 100, 100);
+    doc.text("Official Payslip", 14, 32);
+
+    doc.setDrawColor(226, 229, 240);
+    doc.line(14, 38, 196, 38);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(0, 0, 0);
+    doc.setFont("helvetica", "bold");
+    doc.text("EMPLOYEE DETAILS", 14, 48);
+    
+    doc.setFont("helvetica", "normal");
+    doc.text(`Name:`, 14, 55); doc.text(record.employeeName, 40, 55);
+    doc.text(`Pay Period:`, 14, 62); doc.text(record.salaryMonth, 40, 62);
+    doc.text(`Generated On:`, 14, 69); doc.text(new Date(record.generatedAt || Date.now()).toLocaleDateString(), 40, 69);
+
+    doc.autoTable({
+      startY: 80,
+      head: [['Earnings Breakdown', 'Amount']],
+      body: [
+        ['Basic Salary', formatter.format(record.baseSalary)],
+        ['Performance Bonus / Allowances', formatter.format(record.bonus)],
+      ],
+      foot: [['Gross Earnings', formatter.format(record.baseSalary + record.bonus)]],
+      theme: 'grid',
+      headStyles: { fillColor: [57, 73, 171] }, 
+      footStyles: { fillColor: [240, 240, 240], textColor: [0,0,0] },
+      styles: { fontSize: 10 }
+    });
+
+    let finalY = doc.lastAutoTable.finalY + 10;
+    doc.autoTable({
+      startY: finalY,
+      head: [['Deductions Breakdown', 'Amount']],
+      body: [
+        ['Income Tax (TDS)', `-${formatter.format(tax)}`],
+        ['Provident Fund (PF)', `-${formatter.format(pf)}`],
+        ['Medical Insurance', `-${formatter.format(medical)}`],
+        ...(otherDeductions > 0 ? [['Other/Legacy Deductions', `-${formatter.format(otherDeductions)}`]] : [])
+      ],
+      foot: [['Total Deductions', `-${formatter.format(record.deductions)}`]],
+      theme: 'grid',
+      headStyles: { fillColor: [217, 48, 37] }, 
+      footStyles: { fillColor: [252, 232, 230], textColor: [217, 48, 37] }, 
+      styles: { fontSize: 10 }
+    });
+
+    finalY = doc.lastAutoTable.finalY + 20;
+    doc.setFillColor(30, 142, 62); 
+    doc.rect(14, finalY, 182, 15, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.text("NET SALARY TRANSFERRED:", 20, finalY + 10);
+    doc.text(formatter.format(record.netSalary), 160, finalY + 10, { align: 'right' });
+
+    doc.setTextColor(150, 150, 150);
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.text("This is a computer-generated document and does not require a signature.", 105, 280, { align: 'center' });
+
+    doc.save(`Payslip_${record.employeeName.replace(' ', '_')}_${record.salaryMonth}.pdf`);
+  }
+</script>
+</body>
+</html>

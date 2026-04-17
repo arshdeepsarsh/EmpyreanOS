@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Communications — EmpyreanOS</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.5.0/sockjs.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
+  <style>
+    /* Google Chat / Teams Style Layout */
+    .chat-container { display: flex; height: calc(100vh - var(--topbar-height) - 48px); background: #ffffff; border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: 1px solid var(--border); overflow: hidden; position: relative; }
+    .contacts-pane { width: 300px; border-right: 1px solid var(--border); display: flex; flex-direction: column; background: #f8fafd; flex-shrink: 0; z-index: 10; }
+    .chat-pane { flex: 1; display: flex; flex-direction: column; background: #ffffff; min-width: 0; position: relative; transition: margin-right 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    
+    /* Sidebar Categories & Search */
+    .contacts-header { padding: 12px 16px; }
+    .contacts-search { width: 100%; padding: 8px 12px 8px 36px; border: 1px solid var(--border); border-radius: 20px; font-size: 13px; background: white; outline: none; }
+    .contacts-search:focus { border-color: var(--indigo-400); box-shadow: 0 0 0 2px rgba(57, 73, 171, 0.1); }
+    .search-icon { position: absolute; left: 28px; top: 22px; font-size: 12px; color: var(--text-muted); }
+    
+    .category-header { padding: 16px 16px 4px; font-size: 12px; font-weight: 600; color: var(--text-primary); display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; }
+    .contact-list { overflow-y: auto; flex: 1; padding: 0 8px; margin: 0; list-style: none; transition: max-height 0.3s ease; }
+    .contact-list.collapsed { display: none; }
+    
+    /* Contact Items */
+    .contact-item { padding: 8px; cursor: pointer; display: flex; align-items: center; border-radius: 20px; margin-bottom: 2px; }
+    .contact-item:hover { background: rgba(0,0,0,0.05); }
+    .contact-item.active { background: #e8f0fe; color: #1967d2; font-weight: 500; }
+    .contact-item.active .text-muted { color: #1967d2 !important; }
+    
+    .avatar-wrapper { position: relative; display: inline-block; margin-right: 12px; }
+    .presence-dot { position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #f8fafd; }
+    .dot-online { background-color: var(--green); }
+    .dot-meeting { background-color: var(--red); }
+    .dot-pto { background-color: var(--blue); }
+    .dot-offline { background-color: var(--text-muted); border: 2px solid #f8fafd; background-clip: content-box; padding: 1px; }
+
+    /* Google Chat Style Header */
+    .chat-header { padding: 12px 24px; border-bottom: 1px solid var(--border); background: #ffffff; display: flex; align-items: center; justify-content: space-between; z-index: 10; }
+    .header-actions button { background: transparent; border: none; color: var(--text-secondary); width: 36px; height: 36px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; transition: 0.2s; margin-left: 4px; font-size: 16px; }
+    .header-actions button:hover { background: var(--surface-2); color: var(--indigo-600); }
+    .header-actions button.active-btn { background: #e8f0fe; color: #1967d2; }
+
+    /* Flat Messages */
+    .chat-messages { flex: 1; padding: 24px; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 20px; }
+    .message-row { display: flex; gap: 12px; position: relative; padding-right: 40px; border-radius: 8px; padding: 8px; transition: background 0.2s; }
+    .message-row:hover { background: #f8f9fa; }
+    .message-row:hover .msg-actions { opacity: 1; pointer-events: auto; }
+    
+    .msg-avatar { width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; }
+    .msg-content { flex: 1; min-width: 0; }
+    .msg-header { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+    .sender-name { font-weight: 600; color: var(--text-primary); font-size: 14px; }
+    .msg-time { font-size: 11px; color: var(--text-muted); }
+    .msg-body { font-size: 14px; color: var(--text-primary); line-height: 1.5; word-wrap: break-word; }
+    .msg-reactions { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
+    .reaction-badge { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 2px 6px; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; }
+    
+    /* File Attachments in Messages */
+    .msg-file-attachment { display: inline-flex; align-items: center; gap: 12px; padding: 10px 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); text-decoration: none; color: var(--text-primary); margin-top: 8px; transition: 0.2s; box-shadow: var(--shadow-sm); }
+    .msg-file-attachment:hover { background: var(--surface-2); border-color: var(--indigo-400); color: var(--indigo-700); }
+    .msg-file-attachment i { font-size: 24px; color: #ea4335; } 
+    
+    /* Hover Actions Menu */
+    .msg-actions { position: absolute; top: -16px; right: 16px; background: white; border: 1px solid var(--border); border-radius: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); display: flex; padding: 2px; gap: 2px; opacity: 0; pointer-events: none; transition: all 0.2s; z-index: 5; }
+    .action-btn { border: none; background: transparent; color: var(--text-secondary); width: 32px; height: 32px; border-radius: 50%; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; position: relative; }
+    .action-btn:hover { background: var(--surface-2); color: var(--indigo-600); }
+
+    /* Reaction Picker Popover */
+    .reaction-picker { position: absolute; bottom: 100%; right: 0; background: white; border: 1px solid var(--border); border-radius: 20px; box-shadow: var(--shadow-md); padding: 4px 8px; display: none; gap: 8px; z-index: 10; margin-bottom: 4px; }
+    .reaction-picker span { cursor: pointer; font-size: 18px; transition: transform 0.1s; }
+    .reaction-picker span:hover { transform: scale(1.2); }
+
+    /* True Rich Input Area */
+    .chat-input-wrapper { background: #ffffff; padding: 0 24px 24px; }
+    .rich-input-container { border: 1px solid var(--border); border-radius: 16px; overflow: hidden; transition: border-color 0.2s; background: white; }
+    .rich-input-container:focus-within { border-color: var(--indigo-400); box-shadow: 0 0 0 1px var(--indigo-400); }
+    
+    .rich-toolbar { display: flex; gap: 4px; padding: 8px 12px; background: #f8f9fa; border-bottom: 1px solid var(--border); }
+    .toolbar-btn { border: none; background: transparent; color: var(--text-secondary); width: 30px; height: 30px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 14px; cursor: pointer; transition: 0.2s; }
+    .toolbar-btn:hover { background: var(--border); color: var(--text-primary); }
+    .toolbar-btn.active { background: #e8f0fe; color: #1967d2; }
+    
+    .chat-input { min-height: 44px; max-height: 200px; overflow-y: auto; padding: 12px 16px; font-size: 14px; outline: none; line-height: 1.5; color: var(--text-primary); }
+    .chat-input[placeholder]:empty:before { content: attr(placeholder); color: var(--text-muted); cursor: text; pointer-events: none; display: block; }
+    
+    .input-footer { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: white; }
+
+    /* Microsoft Teams Style Profile Popover */
+    .profile-popover { position: absolute; top: 60px; right: 24px; width: 320px; background: white; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); border: 1px solid var(--border); z-index: 1000; display: none; flex-direction: column; font-family: var(--font-main); }
+    .popover-header { padding: 20px; display: flex; flex-direction: column; align-items: center; border-bottom: 1px solid var(--border); background: #f8fafd; border-radius: 8px 8px 0 0; }
+    .popover-body { padding: 0; max-height: 400px; overflow-y: auto; }
+    .popover-section { padding: 16px 20px; border-bottom: 1px solid var(--border); }
+    .popover-row { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; font-size: 13px; color: var(--text-secondary); }
+    .popover-row:last-child { margin-bottom: 0; }
+    .popover-icon { width: 20px; text-align: center; color: var(--text-muted); font-size: 14px; }
+
+    /* Space Details Drawer Layout */
+    .space-details-drawer { position: absolute; top: 0; right: -320px; width: 320px; height: 100%; background: #ffffff; border-left: 1px solid var(--border); z-index: 20; transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; box-shadow: -4px 0 15px rgba(0,0,0,0.05); }
+    .space-details-drawer.open { right: 0; }
+    .space-drawer-header { padding: 20px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #f8fafd; }
+    .space-drawer-body { flex: 1; overflow-y: auto; padding: 20px; }
+    .member-pill { display: flex; align-items: center; justify-content: space-between; padding: 8px; border-radius: 8px; margin-bottom: 8px; border: 1px solid transparent; transition: 0.2s; }
+    .member-pill:hover { background: var(--surface-2); border-color: var(--border); }
+    
+    /* Inline Editing */
+    .editable-text { padding: 4px 8px; border-radius: 4px; border: 1px solid transparent; transition: 0.2s; cursor: text; word-wrap: break-word; min-height: 24px; }
+    .editable-text:hover { background: var(--surface-2); border-color: var(--border); }
+    .editable-text:focus { outline: none; background: white; border-color: var(--indigo-400); box-shadow: 0 0 0 2px rgba(57, 73, 171, 0.1); }
+
+    /* Custom Checkbox list for Modal */
+    .employee-select-list { max-height: 250px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px; padding: 8px; }
+    .employee-checkbox-item { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 6px; cursor: pointer; }
+    .employee-checkbox-item:hover { background: var(--surface-2); }
+  </style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-brand"><div class="brand-logo">E</div><div class="brand-name">Empyrean<span>OS</span></div></div>
+  <nav class="sidebar-nav" id="sidebarNav"></nav>
+  <div class="sidebar-footer"><button class="nav-link" style="color: #ff7b7b;" onclick="logout()"><i class="fa-solid fa-right-from-bracket fa-fw"></i><span>Sign Out</span></button></div>
+</div>
+
+<div class="sub-sidebar" id="subSidebar"></div>
+
+<div class="main-content" id="mainContent">
+  <div class="topbar">
+    <div class="topbar-title">Communications</div>
+    <div class="topbar-actions">
+      <img id="topbarAvatar" class="avatar" width="34" height="34">
+      <span id="topbarUserName" style="font-size:13.5px; font-weight:500; color:var(--text-primary);"></span>
+    </div>
+  </div>
+
+  <div class="page-body">
+    <div class="chat-container">
+
+      <div class="contacts-pane">
+        <div class="contacts-header" style="position: relative;">
+          <i class="fa-solid fa-magnifying-glass search-icon"></i>
+          <input type="text" id="contactSearchInput" class="contacts-search" placeholder="Find people, spaces..." onkeyup="filterContacts()">
+        </div>
+        
+        <div style="overflow-y: auto; flex: 1; padding-bottom: 20px;">
+          <div class="category-header" onclick="toggleAccordion('channelListBody', 'channelArrow')">
+            <span><i class="fa-solid fa-caret-down me-1" id="channelArrow" style="transition: transform 0.2s;"></i> Spaces</span>
+            <i class="fa-solid fa-plus" title="Create Space" onclick="event.stopPropagation(); openModal('createSpaceModal');"></i>
+          </div>
+          <ul class="contact-list" id="channelListBody">
+            <li class="contact-item active" id="contact-General Channel" data-name="general channel" onclick="switchChat('General Channel', 'Company Broadcast', 'channel')">
+              <div class="avatar-wrapper" style="margin-right: 8px;">
+                <div style="width:24px; height:24px; border-radius:4px; background:#e8f0fe; color:#1967d2; display:flex; align-items:center; justify-content:center; font-size:12px;"><i class="fa-solid fa-users"></i></div>
+              </div>
+              <div class="flex-grow-1" style="font-size: 13.5px;">General Channel</div>
+            </li>
+            <li class="contact-item" id="contact-Engineering" data-name="engineering" onclick="switchChat('Engineering', 'Dev Team Sync', 'channel')">
+              <div class="avatar-wrapper" style="margin-right: 8px;">
+                <div style="width:24px; height:24px; border-radius:4px; background:#fce8e6; color:#c5221f; display:flex; align-items:center; justify-content:center; font-size:12px;"><i class="fa-solid fa-code"></i></div>
+              </div>
+              <div class="flex-grow-1" style="font-size: 13.5px;">Engineering</div>
+            </li>
+            </ul>
+
+          <div class="category-header mt-2" onclick="toggleAccordion('dmListBody', 'dmArrow')">
+            <span><i class="fa-solid fa-caret-down me-1" id="dmArrow" style="transition: transform 0.2s;"></i> Direct Messages</span>
+          </div>
+          <ul class="contact-list" id="dmListBody">
+            <li class="p-3 text-center text-muted" style="font-size: 12px;">Loading directory...</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="chat-pane" id="chatPaneWrapper">
+        
+        <div class="chat-header" id="activeChatHeader">
+          <div class="d-flex align-items-center gap-3">
+            <div id="headerAvatar"></div>
+            <div>
+              <h6 class="mb-0" id="headerName" style="font-family: var(--font-main); font-size: 16px; font-weight: 600; color: var(--text-primary);">General Channel</h6>
+              <div style="font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
+                <span id="headerStatusDot" class="presence-dot dot-online" style="position:static;"></span>
+                <span id="headerSubtitle">Company Broadcast</span>
+              </div>
+            </div>
+          </div>
+          <div class="header-actions">
+            <button title="Audio Call"><i class="fa-solid fa-phone"></i></button>
+            <button title="Video Call"><i class="fa-solid fa-video"></i></button>
+            <button id="infoBtn" title="Details" onclick="toggleDetails()"><i class="fa-solid fa-circle-info"></i></button>
+          </div>
+        </div>
+
+        <div id="profilePopover" class="profile-popover">
+          <div class="popover-header">
+            <img id="popAvatar" src="" width="80" height="80" style="border-radius: 50%; border: 3px solid white; box-shadow: var(--shadow-sm); margin-bottom: 12px;">
+            <h5 id="popName" style="margin: 0 0 4px 0; font-weight: 600; color: var(--text-primary); font-size: 18px;">Name</h5>
+            <div id="popRole" style="font-size: 13px; color: var(--text-secondary); margin-bottom: 2px;">Role</div>
+            <div id="popDept" style="font-size: 12px; color: var(--text-muted);">Department</div>
+          </div>
+          <div class="popover-body">
+            <div class="popover-section" style="background: white;">
+              <div class="popover-row" style="align-items: center;">
+                <div id="popStatusIcon" class="popover-icon" style="color: var(--green);"><i class="fa-solid fa-circle-check"></i></div>
+                <div>
+                  <div style="font-weight: 500; color: var(--text-primary);" id="popStatusText">Available</div>
+                  <div style="font-size: 11px; color: var(--text-muted);">Work hours: 09:00 - 18:00</div>
+                </div>
+              </div>
+              <div class="popover-row"><i class="fa-regular fa-clock popover-icon"></i> <div id="popTime">Local Time</div></div>
+              <div class="popover-row"><i class="fa-solid fa-house-laptop popover-icon"></i> <div id="popWorkMode">Remote</div></div>
+            </div>
+            <div class="popover-section">
+              <div style="font-size: 13px; font-weight: 600; margin-bottom: 12px;">Contact</div>
+              <div class="popover-row"><i class="fa-regular fa-envelope popover-icon"></i> <a href="#" id="popEmail" style="color: var(--indigo-600); text-decoration: none;">email</a></div>
+              <div class="popover-row"><i class="fa-solid fa-phone popover-icon"></i> <span id="popPhone">Phone</span></div>
+              <div class="popover-row"><i class="fa-solid fa-location-dot popover-icon"></i> <span id="popAddress">Location</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="spaceDetailsDrawer" class="space-details-drawer">
+          <div class="space-drawer-header">
+            <h6 style="margin:0; font-weight:600;"><i class="fa-solid fa-users me-2"></i> Space Details</h6>
+            <button class="btn-close" style="font-size: 12px;" onclick="closeSpaceDrawer()"></button>
+          </div>
+          <div class="space-drawer-body">
+            <div style="text-align: center; margin-bottom: 24px;">
+              <div style="width:64px; height:64px; border-radius:12px; background:#e8f0fe; color:#1967d2; display:flex; align-items:center; justify-content:center; font-size:24px; margin: 0 auto 12px;"><i class="fa-solid fa-users"></i></div>
+              
+              <div id="drawerSpaceName" class="editable-text" contenteditable="true" spellcheck="false" style="font-weight: 600; font-size: 18px; text-align: center;" onblur="updateSpaceDetails()">General Channel</div>
+              <div id="drawerSpaceDesc" class="editable-text" contenteditable="true" spellcheck="false" style="font-size: 13px; color: var(--text-secondary); text-align: center; margin-top: 4px;" onblur="updateSpaceDetails()">Company Broadcast</div>
+            </div>
+            
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+                <h6 style="font-size: 12px; text-transform: uppercase; color: var(--text-muted); margin:0;">Members</h6>
+                <button class="btn btn-sm" style="color: var(--indigo-600); font-size: 12px; padding: 2px 6px;" onclick="openModal('addMemberModal')"><i class="fa-solid fa-plus me-1"></i>Add</button>
+            </div>
+
+            <div id="drawerMemberList">
+              </div>
+          </div>
+        </div>
+
+        <div class="chat-messages" id="chatBox"></div>
+
+        <div class="chat-input-wrapper">
+          <div class="rich-input-container">
+            <input type="file" id="fileUpload" style="display:none;" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" onchange="handleFileUpload(this)">
+            
+            <div class="rich-toolbar">
+              <button type="button" class="toolbar-btn" id="btn-bold" title="Bold" onclick="formatText('bold')"><i class="fa-solid fa-bold"></i></button>
+              <button type="button" class="toolbar-btn" id="btn-italic" title="Italic" onclick="formatText('italic')"><i class="fa-solid fa-italic"></i></button>
+              <button type="button" class="toolbar-btn" id="btn-underline" title="Underline" onclick="formatText('underline')"><i class="fa-solid fa-underline"></i></button>
+              <button type="button" class="toolbar-btn" id="btn-strikeThrough" title="Strikethrough" onclick="formatText('strikeThrough')"><i class="fa-solid fa-strikethrough"></i></button>
+              <div style="width: 1px; background: var(--border); margin: 4px; height: 20px;"></div>
+              <button type="button" class="toolbar-btn" title="Insert List" onclick="formatText('insertUnorderedList')"><i class="fa-solid fa-list-ul"></i></button>
+            </div>
+            
+            <div id="messageInput" class="chat-input" contenteditable="true" placeholder="History is on..." onkeyup="checkInputState(event)" onmouseup="updateToolbarState()"></div>
+            
+            <div class="input-footer">
+              <div style="display:flex; gap:4px; align-items:center;">
+                <button type="button" class="toolbar-btn" title="Attach PDF / File" onclick="document.getElementById('fileUpload').click()"><i class="fa-solid fa-circle-plus"></i></button>
+                <button type="button" class="toolbar-btn" title="Add Emoji" onclick="document.execCommand('insertText', false, '😊')"><i class="fa-regular fa-face-smile"></i></button>
+              </div>
+              <div style="display:flex; align-items:center; gap: 12px;">
+                <span id="charCount" style="font-size: 11px; color: var(--text-muted);">0 / 2000</span>
+                <button id="sendBtn" class="btn btn-primary btn-sm" style="border-radius: 20px; padding: 6px 20px;" onclick="sendMessage()">
+                  <i class="fa-solid fa-paper-plane me-2"></i>Send
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="createSpaceModal" style="background: rgba(0,0,0,0.5);">
+  <div class="modal-box" style="width: 600px;">
+    <div class="modal-header">
+      <h5>Create New Space</h5>
+      <button class="modal-close" onclick="closeModal('createSpaceModal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" style="padding: 24px;">
+      <div class="form-group mb-3">
+        <label class="form-label">Space Name</label>
+        <input type="text" class="form-control" id="newSpaceName" placeholder="e.g. Project Alpha" required>
+      </div>
+      <div class="form-group mb-4">
+        <label class="form-label">Description (Optional)</label>
+        <input type="text" class="form-control" id="newSpaceDesc" placeholder="What is this space for?">
+      </div>
+      
+      <label class="form-label">Add Members</label>
+      <div class="employee-select-list" id="createSpaceEmpList">
+        <div class="text-muted text-center p-3">Loading directory...</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('createSpaceModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="submitCreateSpace()">Create Space</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="addMemberModal" style="background: rgba(0,0,0,0.5);">
+  <div class="modal-box" style="width: 500px;">
+    <div class="modal-header">
+      <h5>Add to Space</h5>
+      <button class="modal-close" onclick="closeModal('addMemberModal')"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" style="padding: 24px;">
+      <div class="employee-select-list" id="addMemberEmpList">
+        </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('addMemberModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmAddMembers()">Add Selected</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="sidebar.js"></script>
+<script>
+  if (localStorage.getItem('isLoggedIn') !== 'true') window.location.href = 'login.html';
+
+  const currentUserName = localStorage.getItem('currentUserName') || 'User';
+  const role = localStorage.getItem('userRole');
+  let currentChatRoom = 'General Channel';
+  let chatType = 'channel';
+  let stompClient = null;
+  let activeUserData = null; 
+  let globalEmployees = []; 
+  
+  // FIX: Load permanent groups from Local Storage
+  let customSpaces = JSON.parse(localStorage.getItem('empyrean_custom_spaces')) || {};
+
+  document.addEventListener('DOMContentLoaded', () => {
+    SidebarBuilder.init();
+    loadTeamContacts();
+    connectWebSocket();
+    switchChat('General Channel', 'Company Broadcast', 'channel');
+  });
+
+  // --- FIX: SEARCH / FILTER CONTACTS ---
+  function filterContacts() {
+    const query = document.getElementById('contactSearchInput').value.toLowerCase();
+    const items = document.querySelectorAll('.contact-item');
+    
+    items.forEach(item => {
+        const name = item.getAttribute('data-name');
+        if (name && name.includes(query)) {
+            item.style.display = 'flex';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+  }
+
+  // --- WYSIWYG FORMATTING ---
+  function formatText(cmd) {
+    document.execCommand(cmd, false, null);
+    document.getElementById('messageInput').focus();
+    updateToolbarState();
+  }
+
+  function updateToolbarState() {
+    ['bold', 'italic', 'underline', 'strikeThrough'].forEach(cmd => {
+      const btn = document.getElementById('btn-' + cmd);
+      if (btn) {
+        if (document.queryCommandState(cmd)) btn.classList.add('active');
+        else btn.classList.remove('active');
+      }
+    });
+  }
+
+  function checkInputState(e) {
+    const input = document.getElementById('messageInput');
+    const textContent = input.innerText || input.textContent;
+    document.getElementById('charCount').textContent = `${textContent.length} / 2000`;
+    
+    if (textContent.length >= 2000 && e.key !== 'Backspace' && e.key !== 'Delete') {
+      e.preventDefault();
+      return false;
+    }
+    updateToolbarState();
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
+
+  function handleFileUpload(input) {
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+      const reader = new FileReader();
+
+      reader.onload = function(e) {
+        const fileBase64 = e.target.result; 
+        const isImage = file.type.startsWith('image/');
+        
+        let fileHtml = '';
+        if (isImage) {
+           fileHtml = `<br><img src="${fileBase64}" style="max-width: 200px; max-height: 200px; border-radius: 8px; border: 1px solid var(--border); margin-top: 8px;" alt="${file.name}"><br>`;
+        } else {
+           let iconClass = file.type.includes('pdf') ? 'fa-file-pdf' : 'fa-file-word';
+           fileHtml = `
+             <br><a href="${fileBase64}" download="${file.name}" class="msg-file-attachment" contenteditable="false">
+               <i class="fa-solid ${iconClass}"></i>
+               <div style="display:flex; flex-direction:column; line-height: 1.2;">
+                 <span style="font-size:13px; font-weight:600;">${file.name}</span>
+                 <span style="font-size:11px; color:var(--text-muted);">Click to download</span>
+               </div>
+             </a><br>&nbsp;`;
+        }
+        
+        document.getElementById('messageInput').focus();
+        document.execCommand('insertHTML', false, fileHtml);
+        input.value = ''; 
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  // --- UI ACCORDIONS & MODALS ---
+  function toggleAccordion(listId, arrowId) {
+    const list = document.getElementById(listId);
+    const arrow = document.getElementById(arrowId);
+    list.classList.toggle('collapsed');
+    arrow.style.transform = list.classList.contains('collapsed') ? 'rotate(-90deg)' : 'rotate(0deg)';
+  }
+
+  function openModal(id) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.classList.add('open');
+        if (id === 'addMemberModal') populateAddMemberCheckboxes();
+    }
+  }
+
+  function closeModal(id) {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('open');
+  }
+
+  // --- PERMANENT SPACE MANAGEMENT (Local Storage Wrapper) ---
+  function saveSpacesToLocal() {
+      localStorage.setItem('empyrean_custom_spaces', JSON.stringify(customSpaces));
+  }
+
+  function renderCustomSpacesInSidebar() {
+      const list = document.getElementById('channelListBody');
+      // Clean up previous custom injected spaces
+      document.querySelectorAll('.custom-injected-space').forEach(el => el.remove());
+
+      for (const [name, data] of Object.entries(customSpaces)) {
+        list.innerHTML += `
+          <li class="contact-item custom-injected-space" id="contact-${name}" data-name="${name.toLowerCase()}" onclick="switchChat('${name}', '${data.desc}', 'channel')">
+            <div class="avatar-wrapper" style="margin-right: 8px;">
+              <div style="width:24px; height:24px; border-radius:4px; background:#f3f2f8; color:#3c4043; display:flex; align-items:center; justify-content:center; font-size:12px;"><i class="fa-solid fa-users"></i></div>
+            </div>
+            <div class="flex-grow-1" style="font-size: 13.5px;">${name}</div>
+          </li>
+        `;
+      }
+  }
+
+  function submitCreateSpace() {
+    const name = document.getElementById('newSpaceName').value.trim();
+    const desc = document.getElementById('newSpaceDesc').value || 'Custom Space';
+    
+    if (name !== "") {
+      const checkboxes = document.querySelectorAll('#createSpaceEmpList input[type="checkbox"]:checked');
+      let members = Array.from(checkboxes).map(cb => {
+          const emp = globalEmployees.find(e => e.id == cb.value);
+          return emp;
+      });
+      // Always add self
+      if (!members.find(m => m.name === currentUserName)) {
+         members.push({name: currentUserName, department: 'Me'});
+      }
+
+      customSpaces[name] = { desc: desc, members: members };
+      saveSpacesToLocal();
+      
+      renderCustomSpacesInSidebar();
+      
+      closeModal('createSpaceModal');
+      document.getElementById('newSpaceName').value = '';
+      document.getElementById('newSpaceDesc').value = '';
+      
+      switchChat(name, desc, 'channel');
+    }
+  }
+
+  function updateSpaceDetails() {
+      if (chatType !== 'channel') return;
+      const newName = document.getElementById('drawerSpaceName').innerText.trim();
+      const newDesc = document.getElementById('drawerSpaceDesc').innerText.trim();
+      
+      if (newName && newName !== currentChatRoom) {
+          // If name changes, we must migrate the object in local storage
+          if (customSpaces[currentChatRoom]) {
+              customSpaces[newName] = customSpaces[currentChatRoom];
+              delete customSpaces[currentChatRoom];
+              customSpaces[newName].desc = newDesc;
+              saveSpacesToLocal();
+              renderCustomSpacesInSidebar();
+              currentChatRoom = newName;
+          }
+          document.getElementById('headerName').innerText = newName;
+      } else if (customSpaces[currentChatRoom]) {
+          // Just update description
+          customSpaces[currentChatRoom].desc = newDesc;
+          saveSpacesToLocal();
+      }
+      document.getElementById('headerSubtitle').innerText = newDesc;
+  }
+
+  function populateAddMemberCheckboxes() {
+      const list = document.getElementById('addMemberEmpList');
+      list.innerHTML = '';
+      globalEmployees.forEach(emp => {
+        // Don't show if already in the group
+        let isAlreadyMember = false;
+        if (customSpaces[currentChatRoom] && customSpaces[currentChatRoom].members.find(m => m.name === emp.name)) {
+            isAlreadyMember = true;
+        }
+
+        if (emp.name !== currentUserName && !isAlreadyMember) {
+            list.innerHTML += `
+            <label class="employee-checkbox-item">
+                <input type="checkbox" value="${emp.id}" class="form-check-input">
+                <img src="${avatarUrl(emp.name)}" width="24" height="24" style="border-radius:50%;">
+                <span style="font-size:13px;">${emp.name}</span>
+            </label>
+            `;
+        }
+      });
+  }
+
+  function confirmAddMembers() {
+      const checkboxes = document.querySelectorAll('#addMemberEmpList input[type="checkbox"]:checked');
+      let newMembers = Array.from(checkboxes).map(cb => globalEmployees.find(e => e.id == cb.value));
+      
+      if (customSpaces[currentChatRoom]) {
+          customSpaces[currentChatRoom].members.push(...newMembers);
+          saveSpacesToLocal();
+      }
+      
+      populateSpaceMembers();
+      closeModal('addMemberModal');
+  }
+
+  function removeMember(name) {
+      if (customSpaces[currentChatRoom]) {
+          customSpaces[currentChatRoom].members = customSpaces[currentChatRoom].members.filter(m => m.name !== name);
+          saveSpacesToLocal();
+          populateSpaceMembers();
+      }
+  }
+
+  // --- INFO BUTTON ROUTING (Drawer vs Popover) ---
+  function toggleDetails() {
+    if (chatType === 'channel') {
+      const drawer = document.getElementById('spaceDetailsDrawer');
+      const chatPane = document.getElementById('chatPaneWrapper');
+      
+      if (drawer.classList.contains('open')) {
+        closeSpaceDrawer();
+      } else {
+        document.getElementById('drawerSpaceName').textContent = currentChatRoom;
+        document.getElementById('drawerSpaceDesc').textContent = document.getElementById('headerSubtitle').textContent;
+        populateSpaceMembers();
+        drawer.classList.add('open');
+        chatPane.style.marginRight = '320px'; // Push chat container left to prevent hiding send button
+        document.getElementById('infoBtn').classList.add('active-btn');
+      }
+    } else {
+      const popover = document.getElementById('profilePopover');
+      const infoBtn = document.getElementById('infoBtn');
+      if (popover.style.display === 'flex') {
+        popover.style.display = 'none';
+        infoBtn.classList.remove('active-btn');
+      } else {
+        if (activeUserData) {
+          populatePopover(activeUserData);
+          popover.style.display = 'flex';
+          infoBtn.classList.add('active-btn');
+        }
+      }
+    }
+  }
+
+  function closeSpaceDrawer() {
+    document.getElementById('spaceDetailsDrawer').classList.remove('open');
+    document.getElementById('chatPaneWrapper').style.marginRight = '0';
+    document.getElementById('infoBtn').classList.remove('active-btn');
+  }
+
+  function populateSpaceMembers() {
+    const list = document.getElementById('drawerMemberList');
+    list.innerHTML = '';
+    
+    let membersToRender = [];
+    if (customSpaces[currentChatRoom]) {
+        membersToRender = customSpaces[currentChatRoom].members;
+    } else {
+        // Mock default members for hardcoded channels
+        membersToRender = globalEmployees.slice(0, 4);
+    }
+
+    membersToRender.forEach(emp => {
+      list.innerHTML += `
+        <div class="member-pill">
+          <div style="display:flex; align-items:center; gap:10px;">
+              <img src="${avatarUrl(emp.name)}" width="32" height="32" style="border-radius:50%;">
+              <div>
+                <div style="font-size:13px; font-weight:500;">${emp.name}</div>
+                <div style="font-size:11px; color:var(--text-muted);">${emp.department || 'Staff'}</div>
+              </div>
+          </div>
+          ${emp.name !== currentUserName ? `<button class="btn btn-sm text-danger" style="padding:0; border:none; font-size:12px;" onclick="removeMember('${emp.name}')" title="Remove Member"><i class="fa-solid fa-user-minus"></i></button>` : ''}
+        </div>
+      `;
+    });
+  }
+
+  function populatePopover(emp) {
+    document.getElementById('popAvatar').src = avatarUrl(emp.name);
+    let iconClass = '<i class="fa-solid fa-circle-check"></i>'; let iconColor = 'var(--green)'; let statusText = 'Available';
+    if (emp.status === 'Meeting') { iconClass = '<i class="fa-solid fa-calendar"></i>'; iconColor = 'var(--red)'; statusText = 'In a Meeting'; }
+    if (emp.status === 'PTO') { iconClass = '<i class="fa-solid fa-plane"></i>'; iconColor = 'var(--blue)'; statusText = 'Out of Office'; }
+    if (emp.status === 'Offline') { iconClass = '<i class="fa-solid fa-moon"></i>'; iconColor = 'var(--text-muted)'; statusText = 'Offline'; }
+    
+    document.getElementById('popStatusIcon').innerHTML = iconClass;
+    document.getElementById('popStatusIcon').style.color = iconColor;
+    document.getElementById('popStatusText').textContent = statusText;
+    document.getElementById('popName').textContent = emp.name;
+    document.getElementById('popRole').textContent = emp.designation || 'Staff';
+    document.getElementById('popDept').textContent = emp.department;
+    document.getElementById('popTime').textContent = `${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} (Local)`;
+    document.getElementById('popWorkMode').textContent = emp.workMode || 'Remote';
+    document.getElementById('popEmail').textContent = emp.email || 'Not provided';
+    document.getElementById('popPhone').textContent = emp.mobile || 'Not provided';
+    document.getElementById('popAddress').textContent = emp.homeAddress && emp.homeAddress !== 'Not Provided' ? emp.homeAddress.substring(0,25)+'...' : 'Location hidden';
+  }
+
+  // --- MESSAGE ACTIONS (React, Reply, Edit) ---
+  function toggleReactionPicker(msgId) {
+      const picker = document.getElementById(`react-picker-${msgId}`);
+      picker.style.display = picker.style.display === 'flex' ? 'none' : 'flex';
+  }
+
+  function addReaction(msgId, emoji) {
+      const reactionArea = document.getElementById(`reactions-${msgId}`);
+      document.getElementById(`react-picker-${msgId}`).style.display = 'none';
+      reactionArea.innerHTML += `<span class="reaction-badge">${emoji} 1</span>`;
+  }
+
+  function replyToMessage(sender, rawHtml) {
+      // Strip HTML for a clean blockquote
+      let tempDiv = document.createElement("div");
+      tempDiv.innerHTML = rawHtml;
+      let text = tempDiv.textContent || tempDiv.innerText || "";
+      if (text.length > 50) text = text.substring(0, 50) + "...";
+      
+      const quoteHtml = `<blockquote style="border-left: 3px solid var(--indigo-500); padding-left: 8px; margin-left: 0; color: var(--text-muted); font-size: 12px; background: var(--surface-2); padding: 8px; border-radius: 0 8px 8px 0;"><strong>${sender}</strong>: ${text}</blockquote><p>&nbsp;</p>`;
+      document.getElementById('messageInput').innerHTML = quoteHtml;
+      document.getElementById('messageInput').focus();
+  }
+
+  function editMessage(msgId) {
+      const msgBody = document.getElementById(`msg-body-${msgId}`);
+      const inputField = document.getElementById('messageInput');
+      inputField.innerHTML = msgBody.innerHTML;
+      inputField.focus();
+      // Visual indicator that they are editing
+      document.getElementById('sendBtn').innerHTML = `<i class="fa-solid fa-pen me-2"></i>Update`;
+      
+      // Note: Truly updating the DB requires a PUT endpoint. For now, we load it into the input.
+  }
+
+  // --- FETCH LIVE ROSTER ---
+  async function loadTeamContacts() {
+    try {
+      const response = await fetch('http://localhost:8080/employees');
+      globalEmployees = await response.json();
+      const dmList = document.getElementById('dmListBody');
+      const createSpaceList = document.getElementById('createSpaceEmpList');
+      
+      dmList.innerHTML = '';
+      createSpaceList.innerHTML = '';
+
+      globalEmployees.forEach(emp => {
+        if (emp.name !== currentUserName) {
+            createSpaceList.innerHTML += `
+            <label class="employee-checkbox-item">
+                <input type="checkbox" value="${emp.id}" class="form-check-input">
+                <img src="${avatarUrl(emp.name)}" width="24" height="24" style="border-radius:50%;">
+                <span style="font-size:13px;">${emp.name}</span>
+            </label>
+            `;
+        }
+
+        if (emp.name !== currentUserName) {
+          let dotClass = 'dot-offline';
+          if (emp.status === 'Online') dotClass = 'dot-online';
+          if (emp.status === 'Meeting') dotClass = 'dot-meeting';
+          if (emp.status === 'PTO') dotClass = 'dot-pto';
+
+          const empJson = encodeURIComponent(JSON.stringify(emp));
+
+          dmList.innerHTML += `
+            <li class="contact-item" id="contact-${emp.name}" data-name="${emp.name.toLowerCase()}" onclick="switchChat('${emp.name}', '${emp.designation || 'Staff'}', 'dm', '${dotClass}', '${avatarUrl(emp.name)}', '${empJson}')">
+              <div class="avatar-wrapper">
+                <img src="${avatarUrl(emp.name)}" class="avatar" width="28" height="28" style="border-radius:50%;">
+                <div class="presence-dot ${dotClass}"></div>
+              </div>
+              <div class="flex-grow-1" style="font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                ${emp.name}
+              </div>
+            </li>
+          `;
+        }
+      });
+
+      // Load custom spaces from local storage
+      renderCustomSpacesInSidebar();
+
+    } catch (error) { console.error(error); }
+  }
+
+  // --- SWITCH CHAT CONTEXT ---
+  async function switchChat(name, subtitle, type, dotClass = 'dot-online', avatarSrc = null, empJsonStr = null) {
+    currentChatRoom = name;
+    chatType = type;
+    
+    if (empJsonStr) activeUserData = JSON.parse(decodeURIComponent(empJsonStr));
+    else activeUserData = null;
+    
+    document.getElementById('profilePopover').style.display = 'none';
+    closeSpaceDrawer(); 
+
+    document.querySelectorAll('.contact-item').forEach(el => el.classList.remove('active'));
+    const activeContact = document.getElementById(`contact-${name}`);
+    if (activeContact) activeContact.classList.add('active');
+
+    document.getElementById('headerName').textContent = name;
+    
+    const headerAvatar = document.getElementById('headerAvatar');
+    const headerDot = document.getElementById('headerStatusDot');
+    
+    if (type === 'channel') {
+      headerAvatar.innerHTML = `<div style="width: 32px; height: 32px; display:flex; align-items:center; justify-content:center; color:var(--text-secondary); background:var(--surface-2); border:1px solid var(--border); border-radius: 4px;"><i class="fa-solid fa-users"></i></div>`;
+      headerDot.style.display = 'none';
+      
+      if (customSpaces[name]) {
+          document.getElementById('headerSubtitle').textContent = customSpaces[name].desc;
+      } else {
+          document.getElementById('headerSubtitle').textContent = subtitle;
+      }
+    } else {
+      headerAvatar.innerHTML = `<img src="${avatarSrc}" width="32" height="32" style="border-radius: 50%; box-shadow: var(--shadow-sm);">`;
+      headerDot.style.display = 'inline-block';
+      headerDot.className = `presence-dot ${dotClass}`;
+      document.getElementById('headerSubtitle').textContent = activeUserData.status || 'Offline';
+    }
+
+    const chatBox = document.getElementById('chatBox');
+    chatBox.innerHTML = '';
+    try {
+      const response = await fetch(`http://localhost:8080/chat/history?user1=${currentUserName}&user2=${name}&type=${type}`);
+      const history = await response.json();
+
+      if (history.length === 0) {
+        chatBox.innerHTML = `
+          <div class="d-flex flex-column align-items-center justify-content-center h-100 text-muted" style="opacity:0.6;">
+            <div style="width: 64px; height: 64px; background: var(--surface-2); border-radius: 50%; display:flex; align-items:center; justify-content:center; margin-bottom:16px;">
+              <i class="fa-regular fa-comment-dots" style="font-size: 32px;"></i>
+            </div>
+            <p style="font-size: 13px;">This is the start of your chat history.</p>
+          </div>`;
+      } else {
+        history.forEach(msg => {
+            if (msg.content && msg.content.replace(/&nbsp;|<br>|\s/g, '').trim() !== '') {
+                displayMessage(msg);
+            }
+        });
+      }
+    } catch (error) { console.error("Error fetching history"); }
+  }
+
+  // --- WEBSOCKETS ---
+  function connectWebSocket() {
+    const socket = new SockJS('http://localhost:8080/ws');
+    stompClient = Stomp.over(socket);
+    stompClient.debug = null;
+
+    stompClient.connect({}, function (frame) {
+      stompClient.subscribe('/topic/public', function (payload) {
+        const message = JSON.parse(payload.body);
+        
+        if (!message.content || message.content.replace(/&nbsp;|<br>|\s/g, '').trim() === '') return;
+
+        if (chatType === 'channel' && message.recipient === currentChatRoom) {
+          displayMessage(message);
+        }
+        else if ((message.sender === currentChatRoom && message.recipient === currentUserName) ||
+                 (message.sender === currentUserName && message.recipient === currentChatRoom)) {
+          displayMessage(message);
+        }
+      });
+    });
+  }
+
+  function sendMessage() {
+    const inputField = document.getElementById('messageInput');
+    const messageContent = inputField.innerHTML;
+
+    // Strict validation to prevent empty spaces/lines
+    const cleanCheck = messageContent.replace(/&nbsp;|<br>|\s/g, '').trim();
+
+    if (cleanCheck !== '' && stompClient) {
+      const timeString = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      
+      const chatMessage = {
+        sender: currentUserName,
+        recipient: currentChatRoom,
+        content: messageContent, 
+        time: timeString
+      };
+
+      stompClient.send("/app/chat.sendMessage", {}, JSON.stringify(chatMessage));
+      
+      inputField.innerHTML = '';
+      document.getElementById('charCount').textContent = `0 / 2000`;
+      document.getElementById('sendBtn').innerHTML = `<i class="fa-solid fa-paper-plane me-2"></i>Send`;
+      updateToolbarState();
+    } else {
+      inputField.innerHTML = '';
+    }
+  }
+
+  function displayMessage(message) {
+    const chatBox = document.getElementById('chatBox');
+    if (chatBox.innerHTML.includes('start of your chat history')) chatBox.innerHTML = '';
+
+    const isMyMessage = message.sender === currentUserName;
+    
+    // Generate a random ID if not provided by backend so JS functions work
+    const safeMsgId = message.id || Math.floor(Math.random() * 10000);
+    // Encode HTML for the JS parameters to prevent breaking syntax
+    const encodedContent = encodeURIComponent(message.content);
+    
+    const actionsHtml = `
+      <div class="msg-actions">
+        <div class="reaction-picker" id="react-picker-${safeMsgId}">
+            <span onclick="addReaction(${safeMsgId}, '👍')">👍</span>
+            <span onclick="addReaction(${safeMsgId}, '❤️')">❤️</span>
+            <span onclick="addReaction(${safeMsgId}, '😂')">😂</span>
+            <span onclick="addReaction(${safeMsgId}, '👎')">👎</span>
+        </div>
+        <button class="action-btn" title="Add reaction" onclick="toggleReactionPicker(${safeMsgId})"><i class="fa-regular fa-face-smile"></i></button>
+        <button class="action-btn" title="Reply in thread" onclick="replyToMessage('${message.sender}', decodeURIComponent('${encodedContent}'))"><i class="fa-solid fa-reply"></i></button>
+        ${isMyMessage ? `<button class="action-btn" title="Edit message" onclick="editMessage(${safeMsgId})"><i class="fa-solid fa-pen"></i></button>` : ''}
+      </div>
+    `;
+
+    chatBox.innerHTML += `
+      <div class="message-row">
+        ${actionsHtml}
+        <img src="${avatarUrl(message.sender)}" class="msg-avatar">
+        <div class="msg-content">
+          <div class="msg-header">
+            <span class="sender-name">${message.sender}</span>
+            <span class="msg-time">${message.time || ''}</span>
+          </div>
+          <div class="msg-body" id="msg-body-${safeMsgId}">
+            ${message.content}
+          </div>
+          <div class="msg-reactions" id="reactions-${safeMsgId}"></div>
+        </div>
+      </div>
+    `;
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+</script>
+</body>
+</html>

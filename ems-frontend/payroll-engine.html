@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payroll Engine — EmpyreanOS</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-logo">E</div>
+    <div class="brand-name">Empyrean<span>OS</span></div>
+  </div>
+  <nav class="sidebar-nav" id="sidebarNav"></nav>
+  <div class="sidebar-footer">
+    <button class="nav-link" style="color: #ff7b7b;" onclick="logout()">
+      <i class="fa-solid fa-right-from-bracket fa-fw"></i>
+      <span>Sign Out</span>
+    </button>
+  </div>
+</div>
+
+<div class="sub-sidebar" id="subSidebar"></div>
+
+<div class="main-content" id="mainContent">
+  <div class="topbar">
+    <div class="topbar-title">Automated Payroll Engine</div>
+    <div class="topbar-actions">
+      <img id="topbarAvatar" class="avatar" width="34" height="34">
+      <span id="topbarUserName" style="font-size:13.5px; font-weight:500; color:var(--text-primary);"></span>
+    </div>
+  </div>
+
+  <div class="page-body">
+    <div class="card" style="max-width: 800px; margin: 0 auto;">
+      <div class="card-header">
+        <h6><i class="fa-solid fa-calculator text-indigo me-2"></i> Calculate Draft Salary</h6>
+      </div>
+      <div class="card-body">
+        <p class="text-muted" style="font-size: 13px; margin-bottom: 20px;">
+          Select an employee and month to automatically pull their attendance and leave records, and calculate their prorated salary.
+        </p>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:15px; margin-bottom: 20px;">
+          <div>
+            <label class="form-label">Employee</label>
+            <select class="form-control form-select" id="draftEmpSelect"></select>
+          </div>
+          <div>
+            <label class="form-label">Month</label>
+            <input type="month" class="form-control" id="draftMonth">
+          </div>
+          <div>
+            <label class="form-label">Standard Base Salary ($)</label>
+            <input type="number" class="form-control" id="draftBase" placeholder="e.g. 5000">
+          </div>
+        </div>
+
+        <button class="btn btn-primary" id="calculateBtn" onclick="runDraftCalculation()">
+          <i class="fa-solid fa-gears"></i> Run Engine Calculation
+        </button>
+
+        <div id="resultsSection" style="display: none; margin-top: 30px; border-top: 1px solid var(--border); padding-top: 20px;">
+          <h6 style="color: var(--text-primary); margin-bottom: 15px;">Calculation Results</h6>
+          
+          <div style="display: flex; gap: 20px; margin-bottom: 20px;">
+            <div style="background: var(--surface-2); padding: 15px; border-radius: var(--radius-sm); flex: 1;">
+              <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Payable Days</div>
+              <div style="font-size: 20px; font-weight: 600; color: var(--indigo-600);" id="resDays">0</div>
+            </div>
+            <div style="background: var(--surface-2); padding: 15px; border-radius: var(--radius-sm); flex: 1;">
+              <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase;">Prorated Base Pay</div>
+              <div style="font-size: 20px; font-weight: 600; color: var(--green);" id="resBase">$0.00</div>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom: 20px;">
+             <div>
+                <label class="form-label text-danger">Suggested Tax (TDS)</label>
+                <input type="number" class="form-control" id="resTax" readonly>
+             </div>
+             <div>
+                <label class="form-label text-danger">Suggested PF</label>
+                <input type="number" class="form-control" id="resPF" readonly>
+             </div>
+          </div>
+
+          <button class="btn btn-green" style="width: 100%; justify-content: center;" onclick="finalizeSalary()">
+            <i class="fa-solid fa-check-double"></i> Approve & Save to Ledger
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="sidebar.js"></script>
+<script>
+  const API_URL = 'http://localhost:8080/salary';
+  const EMP_API_URL = 'http://localhost:8080/employees';
+
+  document.addEventListener('DOMContentLoaded', () => {
+    SidebarBuilder.init();
+    
+    // Security check
+    if (localStorage.getItem('userRole') !== 'Boss') {
+      window.location.href = 'index.html';
+    }
+
+    loadEmployees();
+    document.getElementById('draftMonth').value = new Date().toISOString().substring(0, 7);
+  });
+
+  async function loadEmployees() {
+    try {
+      const response = await fetch(EMP_API_URL);
+      const allUsers = await response.json();
+      const staffOnly = allUsers.filter(user => user.role !== 'Boss');
+      const select = document.getElementById('draftEmpSelect');
+      staffOnly.forEach(emp => { select.innerHTML += `<option value="${emp.id}">${emp.name}</option>`; });
+    } catch (e) { console.error(e); }
+  }
+
+  async function runDraftCalculation() {
+    const empId = document.getElementById('draftEmpSelect').value;
+    const month = document.getElementById('draftMonth').value;
+    const base = document.getElementById('draftBase').value;
+
+    if (!empId || !month || !base) {
+      alert("Please fill all fields."); return;
+    }
+
+    const payload = { employeeId: empId, salaryMonth: month, baseSalary: base };
+
+    try {
+      const response = await fetch(`${API_URL}/draft`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        
+        // Show results
+        document.getElementById('resultsSection').style.display = 'block';
+        document.getElementById('resDays').innerText = data.payableDays;
+        document.getElementById('resBase').innerText = "$" + data.calculatedBase.toFixed(2);
+        document.getElementById('resTax').value = data.suggestedTax;
+        document.getElementById('resPF').value = data.suggestedPF;
+      } else {
+        alert("Calculation failed.");
+      }
+    } catch (e) { console.error(e); }
+  }
+
+  async function finalizeSalary() {
+    const empSelect = document.getElementById('draftEmpSelect');
+    
+    const finalPayload = {
+      employeeId: empSelect.value,
+      employeeName: empSelect.options[empSelect.selectedIndex].text,
+      salaryMonth: document.getElementById('draftMonth').value,
+      baseSalary: parseFloat(document.getElementById('resBase').innerText.replace('$', '')),
+      bonus: 0,
+      taxAmount: parseFloat(document.getElementById('resTax').value),
+      pfAmount: parseFloat(document.getElementById('resPF').value),
+      medicalAmount: 0
+    };
+
+    try {
+      const response = await fetch(`${API_URL}/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(finalPayload)
+      });
+
+      if (response.ok) {
+        alert("Salary officially saved to ledger!");
+        window.location.href = 'payroll.html'; // Redirect to ledger to see it
+      } else {
+        alert("Error saving: " + await response.text());
+      }
+    } catch (e) { console.error(e); }
+  }
+</script>
+</body>
+</html>

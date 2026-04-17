@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Management Hub — EmpyreanOS</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .status-dot { position: absolute; bottom: 2px; right: 2px; width: 18px; height: 18px; border-radius: 50%; border: 3px solid var(--surface); display: flex; align-items: center; justify-content: center; font-size: 9px; }
+    .status-online { background: var(--green); }
+    .status-meeting { background: var(--red); }
+    .status-pto { background: var(--blue); color: white; font-size: 8px; }
+    .status-offline { background: var(--text-muted); color: white; font-size: 8px; }
+    .skill-pill { font-size: 10px; background: var(--surface-2); color: var(--text-secondary); padding: 4px 8px; border-radius: 12px; border: 1px solid var(--border); }
+    .profile-drawer { position: fixed; top: 0; right: -450px; width: 450px; height: 100vh; background: var(--surface); box-shadow: -4px 0 24px rgba(0,0,0,0.1); z-index: 1050; transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; flex-direction: column; overflow-y: auto; }
+    .profile-drawer.open { right: 0; }
+    .drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 1040; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+    .drawer-overlay.open { opacity: 1; pointer-events: all; }
+    .drawer-header { padding: 30px; background: linear-gradient(135deg, var(--indigo-800), var(--indigo-600)); color: white; position: relative; }
+    .close-drawer { position: absolute; top: 20px; right: 20px; background: rgba(255,255,255,0.2); border: none; color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; transition: 0.2s; }
+    .drawer-body { padding: 24px; flex: 1; }
+    .drawer-section { margin-bottom: 24px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; }
+    .drawer-section-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); font-weight: 600; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
+    .data-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
+    .data-label { color: var(--text-secondary); }
+    .data-value { color: var(--text-primary); font-weight: 500; text-align: right; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .filter-bar { display: flex; gap: 12px; align-items: center; background: var(--surface); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border); margin-bottom: 24px; }
+    .search-input-wrapper { position: relative; flex: 1; }
+    .search-input-wrapper i { position: absolute; left: 14px; top: 12px; color: var(--text-muted); font-size: 14px; }
+    .search-input-wrapper input { padding-left: 36px; border-radius: 20px; }
+    .vault-upload-zone { border: 2px dashed var(--indigo-300); border-radius: var(--radius-lg); padding: 32px; text-align: center; background: var(--surface-2); cursor: pointer; transition: 0.2s; margin-bottom: 24px; }
+    .vault-upload-zone:hover { background: var(--indigo-50); border-color: var(--indigo-500); }
+    .doc-preview-modal .modal-box { width: 800px; max-width: 90vw; height: 80vh; display: flex; flex-direction: column; }
+    .doc-preview-modal .modal-body { flex: 1; padding: 0; overflow: hidden; background: #333; display: flex; align-items: center; justify-content: center; }
+    .doc-preview-modal iframe { width: 100%; height: 100%; border: none; }
+    .doc-preview-modal img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  </style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-brand"><div class="brand-logo">E</div><div class="brand-name">Empyrean<span>OS</span></div></div>
+  <nav class="sidebar-nav" id="sidebarNav"></nav>
+  <div class="sidebar-footer"><button class="nav-link" style="color: #ff7b7b;" onclick="logout()"><i class="fa-solid fa-right-from-bracket fa-fw"></i><span>Sign Out</span></button></div>
+</div>
+
+<div class="sub-sidebar" id="subSidebar"></div>
+
+<div class="main-content" id="mainContent">
+  <div class="topbar">
+    <div class="topbar-title" id="pageTitle">Management Hub</div>
+    <div class="topbar-actions">
+      <div class="position-relative" style="cursor: pointer; margin-right: 15px;"><i class="fa-solid fa-bell fs-5" style="color: var(--text-muted);"></i><span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notifCount" style="font-size: 9px; display: none;">0</span></div>
+      <img id="topbarAvatar" class="avatar" width="34" height="34">
+      <span id="topbarUserName" style="font-size:13.5px; font-weight:500; color:var(--text-primary);"></span>
+    </div>
+  </div>
+
+  <div class="page-body">
+    
+    <div class="tab-panel" id="panel-directory">
+      <div class="row g-4" id="teamGrid"><div class="col-12 text-center text-muted py-4">Loading team...</div></div>
+    </div>
+
+    <div class="tab-panel" id="panel-docs">
+      <div class="vault-upload-zone" onclick="document.getElementById('vaultFileInput').click()">
+        <input type="file" id="vaultFileInput" style="display: none;" accept=".pdf,image/*" onchange="handleVaultUpload(this)">
+        <i class="fa-solid fa-cloud-arrow-up fs-1 mb-3" style="color: var(--indigo-500);"></i>
+        <h6 style="font-weight: 600;">Upload & Archive Management Documents</h6>
+        <p style="font-size: 13px; color: var(--text-muted);">PDF, JPG, PNG up to 10MB</p>
+      </div>
+      <div class="row g-4" id="docsGrid"></div>
+    </div>
+
+    <div class="tab-panel" id="panel-my-assets">
+      <div class="card">
+        <div class="card-header"><h6>My Personal Assigned Hardware</h6></div>
+        <div style="overflow-x:auto;"><table class="table align-middle"><thead><tr><th>Type</th><th>Model</th><th>Serial</th><th>Date</th><th>Status</th></tr></thead><tbody id="myAssetsTable"></tbody></table></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="panel-hardware">
+      <div class="filter-bar">
+        <div class="search-input-wrapper"><i class="fa-solid fa-magnifying-glass"></i><input type="text" class="form-control" id="hwSearch" placeholder="Search team hardware..." onkeyup="filterHardware()"></div>
+        <select class="form-control form-select" id="hwTypeFilter" style="width: 180px;" onchange="filterHardware()"><option value="All">All Equipment</option><option value="Laptop">Laptops</option><option value="Desktop">Monitors</option><option value="Mobile">Mobiles</option></select>
+      </div>
+      <div class="row g-4">
+        <div class="col-md-4"><div class="card h-100"><div class="card-header"><h6>Assign Hardware</h6></div><div class="card-body"><form id="assignAssetForm"><div class="form-group mb-2"><label class="form-label">Employee</label><select class="form-control form-select" id="assetEmpSelect" required></select></div><div class="form-group mb-2"><label class="form-label">Asset Type</label><select class="form-control form-select" id="assetType"><option value="Laptop">Laptop</option><option value="Desktop">Desktop</option><option value="Mobile">Mobile</option></select></div><div class="form-group mb-2"><label class="form-label">Model</label><input type="text" class="form-control" id="assetModel" required></div><div class="form-group mb-3"><label class="form-label">Serial Number</label><input type="text" class="form-control" id="assetSerial" required></div><button type="submit" class="btn btn-primary w-100">Assign Hardware</button></form></div></div></div>
+        <div class="col-md-8"><div class="card h-100"><div class="card-header"><h6>Team Hardware Ledger</h6></div><div style="overflow-x:auto;"><table class="table align-middle"><thead><tr><th>Employee</th><th>Equipment</th><th>Serial</th><th>Date</th></tr></thead><tbody id="hwLedgerBody"></tbody></table></div></div></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="panel-notes">
+      <div class="row g-4">
+        <div class="col-md-4"><div class="card h-100"><div class="card-header"><h6>Add Coaching Note</h6></div><div class="card-body"><div class="form-group mb-3"><label class="form-label">Team Member</label><select class="form-control form-select" id="noteEmployeeSelect" onchange="loadEmployeeNotes()"></select></div><div class="form-group mb-3"><label class="form-label">Private Notes</label><textarea class="form-control" id="newNoteText" rows="6"></textarea></div><button class="btn btn-primary w-100" onclick="saveNote()">Save Secure Note</button></div></div></div>
+        <div class="col-md-8"><div class="card h-100"><div class="card-header"><h6>History <span id="noteHistoryName"></span></h6></div><div class="card-body" id="noteHistoryList" style="background: var(--surface-2); min-height: 300px;"></div></div></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="panel-reimbursement">
+      <div class="row g-4">
+        <div class="col-md-4"><div class="card h-100"><div class="card-header"><h6>Claim New Expense</h6></div><div class="card-body"><form id="expenseForm"><div class="form-group mb-3"><label class="form-label">Description</label><input type="text" class="form-control" id="expDesc" required></div><div class="form-group mb-4"><label class="form-label">Amount ($)</label><input type="number" step="0.01" class="form-control" id="expAmount" required></div><button type="submit" class="btn btn-primary w-100">Submit Claim</button></form></div></div></div>
+        <div class="col-md-8"><div class="card h-100"><div class="card-header"><h6>My Claims History</h6></div><div style="overflow-x:auto;"><table class="table align-middle text-center"><thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Status</th></tr></thead><tbody id="myExpenseHistory"></tbody></table></div></div></div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="panel-approvals">
+      <div class="filter-bar">
+        <div class="search-input-wrapper"><i class="fa-solid fa-magnifying-glass"></i><input type="text" class="form-control" id="expSearch" placeholder="Search team expenses..." onkeyup="filterExpenses()"></div>
+        <select class="form-control form-select" id="expStatusFilter" style="width: 180px;" onchange="filterExpenses()"><option value="Pending">Pending</option><option value="Approved">Approved</option><option value="Rejected">Rejected</option><option value="All">All Time</option></select>
+      </div>
+      <div class="card"><div class="card-header"><h6>Team Approvals Queue</h6></div><div class="card-body" id="expenseQueue" style="background: var(--surface-2); min-height: 300px;"></div></div>
+    </div>
+
+  </div>
+</div>
+
+<div class="modal-backdrop doc-preview-modal" id="docPreviewModal"><div class="modal-box"><div class="modal-header"><h5 id="previewDocTitle">Preview</h5><div><a id="previewDownloadBtn" href="#" download class="btn btn-sm btn-primary me-2">Download</a><button class="modal-close" onclick="closeModal('docPreviewModal')"><i class="fa-solid fa-xmark"></i></button></div></div><div class="modal-body" id="previewBody"></div></div></div>
+
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeProfileDrawer()"></div>
+<div class="profile-drawer" id="profileDrawer">
+  <div class="drawer-header text-center">
+    <button class="close-drawer" onclick="closeProfileDrawer()"><i class="fa-solid fa-xmark"></i></button>
+    <div class="emp-avatar-wrapper mt-3" style="width: 80px; height: 80px; margin: 0 auto;"><img id="drawAvatar" src="" style="width:100%; border-radius:50%;"><div id="drawStatusDot" class="status-dot"></div></div>
+    <h4 id="drawName" class="mt-2"></h4><p id="drawRole" class="text-white-50"></p>
+  </div>
+  <div class="drawer-body"><div class="drawer-section"><div class="drawer-section-title">About</div><p id="drawBio" style="font-size:12px;"></p><div id="drawSkills" class="d-flex flex-wrap gap-1"></div></div><div class="drawer-section"><div class="drawer-section-title">Contact</div><div class="data-row"><span>Email</span><span id="drawEmail"></span></div><div class="data-row"><span>Mobile</span><span id="drawMobile"></span></div><div class="data-row"><span>Dept</span><span id="drawDept"></span></div></div></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="sidebar.js"></script>
+<script>
+  const role = localStorage.getItem('userRole');
+  const currentUserName = localStorage.getItem('currentUserName');
+  const currentUserDept = localStorage.getItem('userDept') || 'General';
+  let allGlobalExpenses = []; let allGlobalHardware = []; let globalEmployees = [];
+  let myVaultDocs = JSON.parse(localStorage.getItem(`vault_${currentUserName}`)) || [];
+
+  document.addEventListener('DOMContentLoaded', () => {
+    SidebarBuilder.init();
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabMode = urlParams.get('tab') || 'directory'; 
+    const titleMap = { 'directory': 'Team Directory', 'docs': 'Document Vault', 'my-assets': 'My Assets', 'hardware': 'Hardware Assignment', 'notes': '1:1 Private Notes', 'reimbursement': 'My Reimbursements', 'approvals': 'Approvals Queue' };
+    document.getElementById('pageTitle').innerText = titleMap[tabMode] || 'Management Hub';
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    const target = document.getElementById(`panel-${tabMode}`);
+    if(target) target.classList.add('active'); else document.getElementById('panel-directory').classList.add('active');
+
+    loadTeamDirectory(); renderVaultDocs();
+    if (tabMode === 'directory') loadTeamDirectory();
+    else if (tabMode === 'my-assets') loadMyAssets();
+    else if (tabMode === 'hardware') loadAllHardware();
+    else if (tabMode === 'reimbursement') loadMyExpenses();
+    else if (tabMode === 'approvals') loadAllExpenses();
+  });
+
+  // --- LOGIC: DIRECTORY & DRAWER ---
+  async function loadTeamDirectory() {
+    try {
+      const res = await fetch('http://localhost:8080/employees'); globalEmployees = await res.json();
+      const grid = document.getElementById('teamGrid'); const noteSelect = document.getElementById('noteEmployeeSelect'); const assetSelect = document.getElementById('assetEmpSelect');
+      grid.innerHTML = ''; assetSelect.innerHTML = '<option value="" selected disabled>Choose Employee...</option>'; noteSelect.innerHTML = '<option value="" selected disabled>Choose Employee...</option>';
+      let filtered = globalEmployees.filter(u => u.role !== 'Boss');
+      if (role === 'Manager') filtered = filtered.filter(u => u.department === currentUserDept);
+      filtered.forEach(emp => {
+        const empJson = encodeURIComponent(JSON.stringify(emp));
+        grid.innerHTML += `<div class="col-md-3 col-sm-6"><div class="card h-100 p-4 text-center" style="cursor:pointer;" onclick="openProfileDrawer('${empJson}')"><img src="${avatarUrl(emp.name)}" class="avatar mb-2" width="60" style="border-radius:50%; margin:0 auto;"><h6 class="mb-1">${emp.name}</h6><span class="badge badge-gray">${emp.department}</span></div></div>`;
+        if (emp.name !== currentUserName) { noteSelect.innerHTML += `<option value="${emp.name}">${emp.name}</option>`; assetSelect.innerHTML += `<option value="${emp.name}">${emp.name}</option>`; }
+      });
+    } catch(e) {}
+  }
+  function openProfileDrawer(json) {
+    const emp = JSON.parse(decodeURIComponent(json));
+    document.getElementById('drawName').innerText = emp.name; document.getElementById('drawRole').innerText = emp.designation || 'Staff';
+    document.getElementById('drawAvatar').src = avatarUrl(emp.name); document.getElementById('drawEmail').innerText = emp.email;
+    document.getElementById('drawMobile').innerText = emp.mobile || 'N/A'; document.getElementById('drawDept').innerText = emp.department;
+    document.getElementById('drawerOverlay').classList.add('open'); document.getElementById('profileDrawer').classList.add('open');
+  }
+  function closeProfileDrawer() { document.getElementById('drawerOverlay').classList.remove('open'); document.getElementById('profileDrawer').classList.remove('open'); }
+
+  // --- LOGIC: ASSETS ---
+  async function loadMyAssets() {
+    try {
+      const res = await fetch('http://localhost:8080/teamhub/assets'); const assets = await res.json();
+      const tbody = document.getElementById('myAssetsTable'); tbody.innerHTML = '';
+      assets.filter(a => a.employeeName === currentUserName).forEach(a => {
+        tbody.innerHTML += `<tr><td>${a.type}</td><td>${a.model}</td><td>${a.serialNumber}</td><td>${new Date(a.assignedDate).toLocaleDateString()}</td><td><span class="badge badge-green">Assigned</span></td></tr>`;
+      });
+    } catch(e) {}
+  }
+  async function loadAllHardware() {
+    try {
+      const res = await fetch('http://localhost:8080/teamhub/assets'); allGlobalHardware = await res.json(); filterHardware();
+    } catch(e) {}
+  }
+  function filterHardware() {
+    const q = document.getElementById('hwSearch').value.toLowerCase(); const type = document.getElementById('hwTypeFilter').value;
+    let list = allGlobalHardware.filter(h => (type==='All'||h.type===type) && (h.employeeName.toLowerCase().includes(q) || h.model.toLowerCase().includes(q)));
+    const tbody = document.getElementById('hwLedgerBody'); tbody.innerHTML = '';
+    list.forEach(h => { tbody.innerHTML += `<tr><td>${h.employeeName}</td><td>${h.model}</td><td>${h.serialNumber}</td><td>${new Date(h.assignedDate).toLocaleDateString()}</td></tr>`; });
+  }
+  document.getElementById('assignAssetForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const payload = { employeeName: document.getElementById('assetEmpSelect').value, type: document.getElementById('assetType').value, model: document.getElementById('assetModel').value, serialNumber: document.getElementById('assetSerial').value, assignedDate: new Date().toISOString(), status: "Assigned" };
+    const res = await fetch('http://localhost:8080/teamhub/assets/assign', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    if(res.ok) { alert("Assigned!"); loadAllHardware(); }
+  });
+
+  // --- LOGIC: DOC VAULT ---
+  function handleVaultUpload(input) {
+    if (input.files && input.files[0]) {
+      const file = input.files[0]; const reader = new FileReader();
+      reader.onload = (e) => {
+        myVaultDocs.push({ id: Date.now(), title: file.name, type: file.type, data: e.target.result, addedDate: new Date().toLocaleDateString() });
+        localStorage.setItem(`vault_${currentUserName}`, JSON.stringify(myVaultDocs)); renderVaultDocs();
+      }; reader.readAsDataURL(file);
+    }
+  }
+  function renderVaultDocs() {
+    const grid = document.getElementById('docsGrid'); grid.innerHTML = '';
+    myVaultDocs.forEach(doc => {
+      grid.innerHTML += `<div class="col-md-3"><div class="card p-3 text-center" onclick="previewDoc(${doc.id})"><i class="fa-solid fa-file-pdf fs-1 text-danger mb-2"></i><div style="font-size:12px; font-weight:600; white-space:nowrap; overflow:hidden;">${doc.title}</div><button class="btn btn-sm text-danger mt-2" onclick="event.stopPropagation(); deleteDoc(${doc.id})">Delete</button></div></div>`;
+    });
+  }
+  function previewDoc(id) {
+    const doc = myVaultDocs.find(d => d.id === id); if(!doc) return;
+    document.getElementById('previewDocTitle').innerText = doc.title;
+    document.getElementById('previewBody').innerHTML = doc.type.startsWith('image') ? `<img src="${doc.data}">` : `<iframe src="${doc.data}"></iframe>`;
+    openModal('docPreviewModal');
+  }
+
+  // --- LOGIC: REIMBURSEMENT & APPROVALS ---
+  async function loadMyExpenses() {
+    const res = await fetch('http://localhost:8080/teamhub/expenses'); const list = await res.json();
+    const tbody = document.getElementById('myExpenseHistory'); tbody.innerHTML = '';
+    list.filter(e => e.employeeName === currentUserName).forEach(e => {
+        tbody.innerHTML += `<tr><td>${e.dateSubmitted}</td><td>${e.description}</td><td>$${e.amount}</td><td><span class="badge badge-gray">${e.status}</span></td></tr>`;
+    });
+  }
+  async function loadAllExpenses() {
+    const res = await fetch('http://localhost:8080/teamhub/expenses'); allGlobalExpenses = await res.json(); filterExpenses();
+  }
+  function filterExpenses() {
+    const q = document.getElementById('expSearch').value.toLowerCase(); const status = document.getElementById('expStatusFilter').value;
+    let filtered = allGlobalExpenses.filter(e => (status==='All'||e.status===status) && (e.employeeName.toLowerCase().includes(q)));
+    const queue = document.getElementById('expenseQueue'); queue.innerHTML = '';
+    filtered.forEach(exp => {
+      queue.innerHTML += `<div class="card mb-2 p-3 d-flex flex-row justify-content-between"><div><strong>${exp.employeeName}</strong>: $${exp.amount}<br><small>${exp.description}</small></div>
+      <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-outline-danger" onclick="resolveExpense(${exp.id},'Rejected')">Reject</button>
+        <button class="btn btn-sm btn-success" onclick="resolveExpense(${exp.id},'Approved')">Approve</button>
+      </div></div>`;
+    });
+  }
+  async function resolveExpense(id, s) { await fetch(`http://localhost:8080/teamhub/expenses/${id}/status?status=${s}`, {method:'PUT'}); loadAllExpenses(); }
+
+  // NOTES LOGIC
+  async function loadEmployeeNotes() {
+    const emp = document.getElementById('noteEmployeeSelect').value;
+    const res = await fetch(`http://localhost:8080/teamhub/notes?manager=${currentUserName}&employee=${emp}`);
+    const notes = await res.json(); const list = document.getElementById('noteHistoryList'); list.innerHTML = '';
+    notes.forEach(n => { list.innerHTML += `<div class="card p-2 mb-2"><strong>${n.dateAdded}</strong>: ${n.noteText}</div>`; });
+  }
+  async function saveNote() {
+    const emp = document.getElementById('noteEmployeeSelect').value; const text = document.getElementById('newNoteText').value;
+    await fetch('http://localhost:8080/teamhub/notes', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({managerName:currentUserName, employeeName:emp, noteText:text, dateAdded: new Date().toLocaleDateString()}) });
+    loadEmployeeNotes();
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Command Center — EmpyreanOS</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .admin-nav { background: var(--surface); border-radius: var(--radius-lg); padding: 16px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+    .admin-nav .nav-link { color: var(--text-secondary); font-weight: 500; border-radius: 8px; padding: 12px 16px; margin-bottom: 8px; text-align: left; transition: all 0.2s; }
+    .admin-nav .nav-link:hover { background: var(--surface-2); color: var(--indigo-600); }
+    .admin-nav .nav-link.active { background: var(--indigo-600); color: white; box-shadow: 0 4px 12px rgba(57, 73, 171, 0.2); }
+    .admin-panel { background: var(--surface); border-radius: var(--radius-lg); padding: 24px; border: 1px solid var(--border); box-shadow: var(--shadow-sm); display: none; min-height: 600px; }
+    .admin-panel.active { display: block; }
+    
+    /* Org Chart CSS */
+    .org-tree { display: flex; flex-direction: column; align-items: center; padding: 20px; overflow-x: auto; }
+    .org-node { background: white; border: 2px solid var(--indigo-100); border-radius: 12px; padding: 16px; text-align: center; min-width: 160px; box-shadow: var(--shadow-sm); position: relative; transition: 0.2s; cursor: pointer; z-index: 2; }
+    .org-node:hover { transform: translateY(-5px); border-color: var(--indigo-500); box-shadow: var(--shadow-md); }
+    .org-boss { border-color: var(--indigo-600); background: var(--indigo-50); }
+    .org-manager { border-color: var(--blue); }
+    .org-children { display: flex; justify-content: center; gap: 24px; position: relative; padding-top: 20px; margin-top: 20px; }
+    .org-children::before { content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 2px; height: 20px; background: var(--border); z-index: 1; }
+    .org-connector { position: absolute; top: 0; height: 2px; background: var(--border); z-index: 1; }
+    
+    .payroll-review-table th { background: var(--surface-2); font-size: 12px; text-transform: uppercase; color: var(--text-muted); }
+  </style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-brand"><div class="brand-logo">E</div><div class="brand-name">Empyrean<span>OS</span></div></div>
+  <nav class="sidebar-nav" id="sidebarNav"></nav>
+  <div class="sidebar-footer"><button class="nav-link" style="color: #ff7b7b;" onclick="logout()"><i class="fa-solid fa-right-from-bracket fa-fw"></i><span>Sign Out</span></button></div>
+</div>
+
+<div class="sub-sidebar" id="subSidebar"></div>
+
+<div class="main-content" id="mainContent">
+  <div class="topbar">
+    <div class="topbar-title"><i class="fa-solid fa-chess-king text-yellow me-2"></i>Executive Command Center</div>
+    <div class="topbar-actions">
+      <img id="topbarAvatar" class="avatar" width="34" height="34" alt="Boss">
+      <span id="topbarUserName" style="font-size:13.5px; font-weight:500; color:var(--text-primary);"></span>
+    </div>
+  </div>
+
+  <div class="page-body">
+    <div class="row g-4">
+      
+      <div class="col-md-3">
+        <div class="admin-nav nav flex-column nav-pills" role="tablist" aria-orientation="vertical">
+          <button class="nav-link active" onclick="switchAdminTab('orgChart')"><i class="fa-solid fa-sitemap me-2"></i> Organization Chart</button>
+          <button class="nav-link" onclick="switchAdminTab('rbac')"><i class="fa-solid fa-user-shield me-2"></i> Role & Access (RBAC)</button>
+          <button class="nav-link" onclick="switchAdminTab('payrollRun')"><i class="fa-solid fa-file-invoice-dollar me-2"></i> Payroll Run Engine</button>
+          <button class="nav-link" onclick="switchAdminTab('broadcast')"><i class="fa-solid fa-tower-broadcast me-2"></i> Broadcast Center</button>
+          <button class="nav-link" onclick="switchAdminTab('audit')"><i class="fa-solid fa-list-check me-2"></i> Audit Ledger</button>
+        </div>
+      </div>
+
+      <div class="col-md-9">
+        
+        <div class="admin-panel active" id="orgChartPanel">
+          <h5 class="mb-4" style="font-weight: 600;">Live Organization Hierarchy</h5>
+          <div class="org-tree" id="orgChartContainer">
+            <div class="text-muted mt-5">Mapping organization structure...</div>
+          </div>
+        </div>
+
+        <div class="admin-panel" id="rbacPanel">
+          <h5 class="mb-1" style="font-weight: 600;">System Privileges</h5>
+          <p class="text-muted mb-4" style="font-size: 13px;">Instantly promote employees to Managers to grant them access to the Team Hub and Approval Queues.</p>
+          <div class="table-responsive">
+            <table class="table align-middle table-hover">
+              <thead class="table-light"><tr><th>Employee</th><th>Department</th><th>Current Role</th><th>Action</th></tr></thead>
+              <tbody id="rbacTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="admin-panel" id="payrollRunPanel">
+          <h5 class="mb-1" style="font-weight: 600;">Automated Payroll Engine</h5>
+          <p class="text-muted mb-4" style="font-size: 13px;">Calculate salaries instantly based on raw attendance data and base pay.</p>
+          
+          <div class="d-flex gap-3 mb-4 align-items-end p-4" style="background: var(--surface-2); border-radius: 8px;">
+            <div>
+              <label class="form-label small text-muted">Select Payroll Month</label>
+              <input type="month" class="form-control" id="payrollMonth" value="2026-04">
+            </div>
+            <div>
+              <label class="form-label small text-muted">Base Monthly Salary ($)</label>
+              <input type="number" class="form-control" id="baseSalary" value="5000">
+            </div>
+            <button class="btn btn-primary" onclick="generatePayrollPreview()"><i class="fa-solid fa-calculator me-2"></i>Calculate Draft</button>
+          </div>
+
+          <div id="payrollDraftArea" style="display: none;">
+            <h6 class="mb-3 text-indigo">Draft Review</h6>
+            <div class="table-responsive mb-4">
+              <table class="table align-middle table-sm payroll-review-table">
+                <thead><tr><th>Employee</th><th>Total Days</th><th>Days Present</th><th>Absences</th><th>Calculated Net Pay</th></tr></thead>
+                <tbody id="payrollDraftBody"></tbody>
+              </table>
+            </div>
+            <button class="btn btn-green w-100 py-2" onclick="approveAndDisburse()"><i class="fa-solid fa-check-double me-2"></i>Approve & Disburse Funds</button>
+          </div>
+        </div>
+
+        <div class="admin-panel" id="broadcastPanel">
+          <h5 class="mb-4" style="font-weight: 600;">Communications Command</h5>
+          <div class="row g-4">
+            <div class="col-md-7">
+              <div class="form-group mb-3">
+                <label class="form-label">Message Content</label>
+                <textarea class="form-control bg-light" rows="4" id="broadcastMessage" placeholder="Type company-wide announcement..."></textarea>
+              </div>
+              <div class="form-group mb-4">
+                <label class="form-label">Display Type</label>
+                <select class="form-select bg-light" id="broadcastType">
+                  <option value="marquee">Scrolling Top Banner</option>
+                  <option value="alert">Red Urgent Alert</option>
+                  <option value="poll">1-Click Pulse Poll</option>
+                </select>
+              </div>
+              <button class="btn btn-primary w-100" onclick="publishBroadcast()"><i class="fa-solid fa-satellite-dish me-2"></i>Publish Immediately</button>
+            </div>
+            <div class="col-md-5">
+              <div class="p-4" style="background: var(--surface-2); border-radius: 12px; height: 100%;">
+                <h6 class="text-muted" style="font-size: 12px; text-transform: uppercase;">Live Preview</h6>
+                <div class="mt-4 p-2 text-white text-center" style="background: linear-gradient(90deg, var(--indigo-900), var(--indigo-700)); border-radius: 4px; font-size: 11px; white-space: nowrap; overflow: hidden;">
+                  <i class="fa-solid fa-bolt text-yellow me-1"></i> <span id="broadcastPreview">Your message here...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="admin-panel" id="auditPanel">
+          <h5 class="mb-1" style="font-weight: 600;">Security Audit Ledger</h5>
+          <p class="text-muted mb-4" style="font-size: 13px;">Immutable SOC2 compliant record of all sensitive system changes.</p>
+          
+          <div class="table-responsive">
+            <table class="table table-sm" style="font-size: 12px;">
+              <thead class="table-light"><tr><th>Timestamp</th><th>User / Role</th><th>Action Performed</th><th>Severity</th></tr></thead>
+              <tbody id="auditTableBody">
+                <tr><td>2026-04-06 14:22:10</td><td><strong>The Boss</strong></td><td>Viewed Audit Ledger</td><td><span class="badge bg-secondary">INFO</span></td></tr>
+                <tr><td>2026-04-06 09:15:00</td><td>John Doe (Manager)</td><td>Approved Expense #1042</td><td><span class="badge bg-primary">LOW</span></td></tr>
+                <tr><td>2026-04-05 18:45:22</td><td>Arshdeep (Employee)</td><td>Updated Bank Account Number</td><td><span class="badge bg-warning text-dark">MEDIUM</span></td></tr>
+                <tr><td>2026-04-01 10:00:00</td><td><strong>System Admin</strong></td><td>Deleted User ID #4 (Terminated)</td><td><span class="badge bg-danger">CRITICAL</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="sidebar.js"></script>
+<script>
+  const role = localStorage.getItem('userRole');
+  let globalEmployees = [];
+
+  document.addEventListener('DOMContentLoaded', () => {
+    SidebarBuilder.init();
+    if (role !== 'Boss') { window.location.href = 'index.html'; return; } // SECURE THIS PAGE
+    
+    // Broadcast Preview Listener
+    document.getElementById('broadcastMessage').addEventListener('input', function() {
+      document.getElementById('broadcastPreview').textContent = this.value || 'Your message here...';
+    });
+
+    loadAdminData();
+  });
+
+  function switchAdminTab(panelId) {
+    document.querySelectorAll('.admin-nav .nav-link').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.admin-panel').forEach(el => el.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById(panelId + 'Panel').classList.add('active');
+  }
+
+  async function loadAdminData() {
+    try {
+      const res = await fetch('http://localhost:8080/employees');
+      globalEmployees = await res.json();
+      buildOrgChart();
+      buildRBACTable();
+    } catch (e) { console.error("Error loading admin data", e); }
+  }
+
+  // --- 1. ORG CHART BUILDER ---
+  function buildOrgChart() {
+    const container = document.getElementById('orgChartContainer');
+    const boss = globalEmployees.find(e => e.role === 'Boss');
+    const managers = globalEmployees.filter(e => e.role === 'Manager');
+    const staff = globalEmployees.filter(e => e.role === 'Employee');
+
+    if (!boss) { container.innerHTML = 'No Boss found in DB.'; return; }
+
+    let html = `<div class="org-node org-boss">
+                  <img src="${avatarUrl(boss.name)}" width="48" height="48" style="border-radius:50%; margin-bottom:8px;">
+                  <div style="font-weight:700;">${boss.name}</div>
+                  <div style="font-size:11px; color:var(--text-muted);">CEO</div>
+                </div>`;
+
+    if (managers.length > 0) {
+      html += `<div class="org-children">
+                 <div class="org-connector" style="width: ${((managers.length - 1) / managers.length) * 100}%; left: ${50 / managers.length}%;"></div>`;
+      
+      managers.forEach(mgr => {
+        const myTeam = staff.filter(s => s.department === mgr.department);
+        let mgrHtml = `<div style="display:flex; flex-direction:column; align-items:center; position:relative;">
+                        <div class="org-node org-manager mt-4">
+                          <img src="${avatarUrl(mgr.name)}" width="40" height="40" style="border-radius:50%; margin-bottom:8px;">
+                          <div style="font-weight:600; font-size:13px;">${mgr.name}</div>
+                          <div style="font-size:10px; color:var(--text-muted);">Head of ${mgr.department}</div>
+                        </div>`;
+        
+        if (myTeam.length > 0) {
+          mgrHtml += `<div class="org-children" style="gap:16px;">
+                        <div class="org-connector" style="width: ${((myTeam.length - 1) / myTeam.length) * 100}%; left: ${50 / myTeam.length}%;"></div>`;
+          myTeam.forEach(emp => {
+            mgrHtml += `<div class="mt-4" style="position:relative;">
+                          <div class="org-node" style="padding:10px; min-width:120px;">
+                            <img src="${avatarUrl(emp.name)}" width="32" height="32" style="border-radius:50%; margin-bottom:4px;">
+                            <div style="font-weight:500; font-size:12px;">${emp.name}</div>
+                          </div>
+                        </div>`;
+          });
+          mgrHtml += `</div>`; // close team children
+        }
+        mgrHtml += `</div>`; // close manager block
+        html += mgrHtml;
+      });
+      html += `</div>`; // close managers row
+    }
+    container.innerHTML = html;
+  }
+
+  // --- 2. RBAC MANAGEMENT ---
+  function buildRBACTable() {
+    const tbody = document.getElementById('rbacTableBody');
+    tbody.innerHTML = '';
+    
+    globalEmployees.forEach(emp => {
+      if (emp.role === 'Boss') return; // Cannot demote the boss
+      const isManager = emp.role === 'Manager';
+      
+      tbody.innerHTML += `
+        <tr>
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <img src="${avatarUrl(emp.name)}" width="30" height="30" style="border-radius:50%;">
+              <span style="font-weight:500; font-size:14px;">${emp.name}</span>
+            </div>
+          </td>
+          <td><span class="badge bg-light text-dark border">${emp.department}</span></td>
+          <td>
+            <select class="form-select form-select-sm" id="roleSelect-${emp.id}" style="width: 130px; font-weight: 500; color: ${isManager ? 'var(--indigo-600)' : 'inherit'};">
+              <option value="Employee" ${!isManager ? 'selected' : ''}>Employee</option>
+              <option value="Manager" ${isManager ? 'selected' : ''}>Manager</option>
+            </select>
+          </td>
+          <td>
+            <button class="btn btn-sm btn-primary" onclick="updateRole(${emp.id})">Save Privileges</button>
+          </td>
+        </tr>
+      `;
+    });
+  }
+
+  async function updateRole(empId) {
+    const newRole = document.getElementById(`roleSelect-${empId}`).value;
+    const emp = globalEmployees.find(e => e.id === empId);
+    emp.role = newRole;
+
+    try {
+      await fetch(`http://localhost:8080/employees/${empId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(emp)
+      });
+      alert(`Success! ${emp.name} is now a ${newRole}.`);
+      loadAdminData(); // Refresh UI
+    } catch (e) { alert("Failed to update role."); }
+  }
+
+  // --- 3. PAYROLL RUN ENGINE ---
+  let draftPayrollData = [];
+  
+  async function generatePayrollPreview() {
+    const baseSalary = parseFloat(document.getElementById('baseSalary').value);
+    const selectedMonth = document.getElementById('payrollMonth').value; // Format: YYYY-MM
+    
+    try {
+      const attRes = await fetch('http://localhost:8080/attendance');
+      const allAttendance = await attRes.json();
+      
+      const tbody = document.getElementById('payrollDraftBody');
+      tbody.innerHTML = '';
+      draftPayrollData = [];
+
+      globalEmployees.forEach(emp => {
+        if (emp.role === 'Boss') return; // Boss gets paid differently ;)
+        
+        // Filter attendance for this specific employee and this specific month
+        const monthlyAtt = allAttendance.filter(a => 
+          a.employeeId === emp.id && 
+          (a.attendanceDate || a.date || '').startsWith(selectedMonth)
+        );
+
+        let daysPresent = 0;
+        monthlyAtt.forEach(a => { if (a.status === 'Present') daysPresent++; else if (a.status === 'Half Day') daysPresent += 0.5; });
+        
+        // Assuming a standard 22 working day month for calculation
+        const totalWorkingDays = 22; 
+        const absences = totalWorkingDays - daysPresent;
+        
+        // Calculate Pay: (Base / 22) * Days Present
+        const dailyRate = baseSalary / totalWorkingDays;
+        const netPay = (daysPresent * dailyRate).toFixed(2);
+
+        draftPayrollData.push({
+          employeeId: emp.id,
+          employeeName: emp.name,
+          salaryMonth: selectedMonth,
+          netSalary: parseFloat(netPay)
+        });
+
+        tbody.innerHTML += `
+          <tr>
+            <td style="font-weight:600;">${emp.name}</td>
+            <td>${totalWorkingDays}</td>
+            <td class="text-success fw-bold">${daysPresent}</td>
+            <td class="text-danger">${absences < 0 ? 0 : absences}</td>
+            <td style="font-family: var(--font-main); font-weight:700; color: var(--green);">$${netPay}</td>
+          </tr>
+        `;
+      });
+
+      document.getElementById('payrollDraftArea').style.display = 'block';
+    } catch (e) { console.error("Payroll Error", e); }
+  }
+
+  async function approveAndDisburse() {
+    if (!confirm("Are you sure? This will lock the payroll and send funds.")) return;
+    
+    // In a real app, you would send the whole array to a bulk POST endpoint.
+    // For this prototype, we'll iterate and save them.
+    try {
+      for (const record of draftPayrollData) {
+        await fetch('http://localhost:8080/salary/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(record)
+        });
+      }
+      alert("Payroll Disbursed Successfully!");
+      document.getElementById('payrollDraftArea').style.display = 'none';
+    } catch (e) { alert("Failed to process payroll."); }
+  }
+
+  // --- 4. BROADCAST CENTER ---
+  function publishBroadcast() {
+    const text = document.getElementById('broadcastMessage').value;
+    const type = document.getElementById('broadcastType').value;
+    
+    if (!text) { alert("Enter a message first!"); return; }
+    
+    if (type === 'marquee') {
+      localStorage.setItem('company_buzz_text', text);
+      alert("Scrolling Banner Updated Live!");
+    } else {
+      localStorage.setItem('empyrean_broadcast', text);
+      alert("Red Alert Banner triggered on all active screens!");
+    }
+  }
+
+</script>
+</body>
+</html>

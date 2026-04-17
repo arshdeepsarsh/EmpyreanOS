@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Workspace — EmpyreanOS</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    
+    /* New Search/Filter Bar Styles */
+    .filter-bar { display: flex; gap: 12px; align-items: center; background: var(--surface); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border); margin-bottom: 24px; }
+    .search-input-wrapper { position: relative; flex: 1; }
+    .search-input-wrapper i { position: absolute; left: 14px; top: 12px; color: var(--text-muted); font-size: 14px; }
+    .search-input-wrapper input { padding-left: 36px; border-radius: 20px; }
+
+    /* Vault Upload Styles */
+    .vault-upload-zone { border: 2px dashed var(--indigo-300); border-radius: var(--radius-lg); padding: 32px; text-align: center; background: var(--surface-2); cursor: pointer; transition: 0.2s; margin-bottom: 24px; }
+    .vault-upload-zone:hover { background: var(--indigo-50); border-color: var(--indigo-500); }
+    
+    /* Document Preview Modal */
+    .doc-preview-modal .modal-box { width: 800px; max-width: 90vw; height: 80vh; display: flex; flex-direction: column; }
+    .doc-preview-modal .modal-body { flex: 1; padding: 0; overflow: hidden; background: #333; display: flex; align-items: center; justify-content: center; }
+    .doc-preview-modal iframe { width: 100%; height: 100%; border: none; }
+    .doc-preview-modal img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  </style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-logo">E</div>
+    <div class="brand-name">Empyrean<span>OS</span></div>
+  </div>
+  <nav class="sidebar-nav" id="sidebarNav"></nav>
+  <div class="sidebar-footer">
+    <button class="nav-link" style="color: #ff7b7b;" onclick="logout()">
+      <i class="fa-solid fa-right-from-bracket fa-fw"></i>
+      <span>Sign Out</span>
+    </button>
+  </div>
+</div>
+
+<div class="sub-sidebar" id="subSidebar"></div>
+
+<div class="main-content" id="mainContent">
+  <div class="topbar">
+    <div class="topbar-title" id="pageTitle">My Workspace</div>
+    <div class="topbar-actions">
+      <div class="position-relative" style="cursor: pointer; margin-right: 15px;">
+        <i class="fa-solid fa-bell fs-5" style="color: var(--text-muted);"></i>
+        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" id="notifCount" style="font-size: 9px; display: none;">0</span>
+      </div>
+      <img id="topbarAvatar" class="avatar" width="34" height="34">
+      <span id="topbarUserName" style="font-size:13.5px; font-weight:500; color:var(--text-primary);"></span>
+    </div>
+  </div>
+
+  <div class="page-body">
+
+    <div class="tab-panel" id="panel-assets">
+      
+      <div id="managerHardwareSection" style="display: none;">
+        <div class="filter-bar">
+          <div class="search-input-wrapper">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" class="form-control" id="hwSearch" placeholder="Search team hardware by employee, serial number, or model..." onkeyup="filterHardware()">
+          </div>
+          <select class="form-control form-select" id="hwTypeFilter" style="width: 180px;" onchange="filterHardware()">
+            <option value="All" selected>All Equipments</option>
+            <option value="Laptop">Laptops</option>
+            <option value="Desktop">Desktop Monitors</option>
+            <option value="Mobile">Mobile Phones</option>
+          </select>
+        </div>
+
+        <div class="row g-4 mb-4">
+          <div class="col-md-4">
+            <div class="card h-100">
+              <div class="card-header"><h6>Assign Hardware (Team)</h6></div>
+              <div class="card-body">
+                <form id="assignAssetForm">
+                  <div class="form-group"><label class="form-label">Select Employee</label><select class="form-control form-select" id="assetEmpSelect" required><option value="" selected disabled>Loading team...</option></select></div>
+                  <div class="form-group">
+                    <label class="form-label">Asset Type</label>
+                    <select class="form-control form-select" id="assetType" required>
+                      <option value="Laptop">Laptop</option>
+                      <option value="Desktop">Desktop Monitor</option>
+                      <option value="Mobile">Mobile Phone</option>
+                      <option value="Tablet">Tablet</option>
+                    </select>
+                  </div>
+                  <div class="form-group"><label class="form-label">Model / Description</label><input type="text" class="form-control" id="assetModel" placeholder="e.g. MacBook Pro 16 M3" required></div>
+                  <div class="form-group mb-4"><label class="form-label">Serial Number / Tag</label><input type="text" class="form-control" id="assetSerial" placeholder="e.g. C02XG123" required></div>
+                  <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-microchip me-2"></i> Assign Hardware</button>
+                </form>
+              </div>
+            </div>
+          </div>
+          
+          <div class="col-md-8">
+            <div class="card h-100">
+              <div class="card-header"><h6>Team Hardware Ledger</h6></div>
+              <div style="overflow-x:auto;">
+                <table class="table align-middle">
+                  <thead>
+                    <tr>
+                      <th>Employee</th>
+                      <th>Equipment</th>
+                      <th>Serial No.</th>
+                      <th>Assigned On</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="hwLedgerBody">
+                    <tr><td colspan="5" class="text-center text-muted py-5">Loading ledger...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h6>My Assigned Hardware</h6>
+          <button class="btn btn-sm btn-outline" style="color: var(--red); border-color: var(--red-light);">
+            <i class="fa-solid fa-triangle-exclamation me-1"></i> Report Damage
+          </button>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="table align-middle">
+            <thead>
+              <tr>
+                <th>Asset Type</th>
+                <th>Model / Description</th>
+                <th>Serial Number</th>
+                <th>Assigned Date</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="assetsTableBody">
+              <tr><td colspan="5" class="text-center text-muted py-4">Loading assets...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="panel-docs">
+      
+      <div class="vault-upload-zone" onclick="document.getElementById('vaultFileInput').click()">
+        <input type="file" id="vaultFileInput" style="display: none;" accept=".pdf,image/*" onchange="handleVaultUpload(this)">
+        <i class="fa-solid fa-cloud-arrow-up fs-1 mb-3" style="color: var(--indigo-500);"></i>
+        <h6 style="font-weight: 600; color: var(--text-primary);">Click to upload documents securely</h6>
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 0;">PDF, JPG, PNG up to 10MB</p>
+      </div>
+
+      <h6 class="mb-4" style="font-family: var(--font-main); color: var(--text-primary);"><i class="fa-solid fa-lock text-indigo me-2"></i>My Secure Documents</h6>
+      <div class="row g-4" id="docsGrid">
+        <div class="col-12 text-center text-muted py-4">Loading vault...</div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="panel-tax">
+      <div class="row g-4">
+        <div class="col-md-5">
+          <div class="card h-100">
+            <div class="card-header"><h6>Income & Deductions</h6></div>
+            <div class="card-body">
+              <form id="taxCalculatorForm">
+                <div class="form-group mb-3">
+                  <label class="form-label">Annual Base Salary ($)</label>
+                  <input type="number" class="form-control" style="font-size: 1.2rem; font-weight: 600;" id="calcSalary" value="60000" required>
+                </div>
+                <div class="form-group mb-3">
+                  <label class="form-label">Annual Bonus ($)</label>
+                  <input type="number" class="form-control" id="calcBonus" value="5000">
+                </div>
+                <div class="form-group mb-4">
+                  <label class="form-label text-success">Total Tax-Free Investments ($)</label>
+                  <input type="number" class="form-control" id="calcInvestments" value="2000">
+                  <small class="text-muted" style="font-size: 11px;">e.g. 401k, Health Insurance</small>
+                </div>
+                <button type="button" class="btn btn-primary w-100 py-2" onclick="calculateTax()">Calculate My Take-Home</button>
+              </form>
+            </div>
+          </div>
+        </div>
+        
+        <div class="col-md-7">
+          <div class="card h-100" style="background: linear-gradient(135deg, var(--indigo-600) 0%, var(--indigo-800) 100%); color: white; border: none;">
+            <div class="card-body p-5 d-flex flex-column justify-content-center">
+              <h6 style="color: rgba(255,255,255,0.7); font-family: var(--font-main); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 20px;">Estimated Yearly Projection</h6>
+              
+              <div class="d-flex justify-content-between mb-3" style="font-size: 15px;">
+                <span>Gross Income:</span>
+                <strong id="resGross">$65,000.00</strong>
+              </div>
+              <div class="d-flex justify-content-between mb-3" style="color: #ffc107; font-size: 15px;">
+                <span>Taxable Income (After Investments):</span>
+                <strong id="resTaxable">$63,000.00</strong>
+              </div>
+              <div class="d-flex justify-content-between mb-4 pb-4" style="color: #ff7b7b; font-size: 15px; border-bottom: 1px solid rgba(255,255,255,0.2);">
+                <span>Estimated Income Tax:</span>
+                <strong id="resTax">-$9,450.00</strong>
+              </div>
+              
+              <p class="mb-1" style="color: rgba(255,255,255,0.7); font-size: 13px;">Estimated Net Take-Home (Yearly)</p>
+              <h1 style="font-family: var(--font-main); font-size: 3.5rem; font-weight: 700; margin-bottom: 30px;" id="resNet">$53,550.00</h1>
+              
+              <div class="d-flex justify-content-between align-items-center pt-3" style="border-top: 1px solid rgba(255,255,255,0.2);">
+                <span style="color: rgba(255,255,255,0.7); font-size: 14px;">Estimated Monthly Payout:</span>
+                <h4 class="mb-0" style="font-family: var(--font-main); font-weight: 600;" id="resMonthly">$4,462.50</h4>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="panel-expense">
+      
+      <div id="managerExpenseSection" style="display: none;">
+        <div class="filter-bar">
+          <div class="search-input-wrapper">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <input type="text" class="form-control" id="expSearch" placeholder="Search team expenses by employee or description..." onkeyup="filterExpenses()">
+          </div>
+          <select class="form-control form-select" id="expStatusFilter" style="width: 180px;" onchange="filterExpenses()">
+            <option value="Pending" selected>Action Required</option>
+            <option value="Approved">History: Approved</option>
+            <option value="Rejected">History: Rejected</option>
+            <option value="All">View Entire Ledger</option>
+          </select>
+          <select class="form-control form-select" id="expTimeFilter" style="width: 150px;" onchange="filterExpenses()">
+            <option value="All" selected>All Time</option>
+            <option value="Month">This Month</option>
+          </select>
+        </div>
+
+        <div class="card mb-4">
+          <div class="card-header">
+            <h6><i class="fa-solid fa-receipt text-indigo me-2"></i> <span id="expPanelTitle">Team Expense Queue</span></h6>
+          </div>
+          <div class="card-body" id="expenseQueue" style="background: var(--surface-2); min-height: 200px; padding: 16px;">
+            <div class="text-center text-muted py-4">Loading queue...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-4">
+        <div class="col-md-4">
+          <div class="card h-100">
+            <div class="card-header"><h6>Submit New Expense</h6></div>
+            <div class="card-body">
+              <form id="expenseForm">
+                <div class="form-group mb-3">
+                  <label class="form-label">Description / Reason</label>
+                  <input type="text" class="form-control" id="expDesc" placeholder="e.g., Client Lunch" required>
+                </div>
+                <div class="form-group mb-4">
+                  <label class="form-label">Amount ($)</label>
+                  <input type="number" step="0.01" class="form-control" id="expAmount" placeholder="0.00" required>
+                </div>
+                <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-paper-plane me-2"></i> Send for Approval</button>
+              </form>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-8">
+          <div class="card h-100">
+            <div class="card-header"><h6>My Personal Claim History</h6></div>
+            <div style="overflow-x:auto;">
+              <table class="table align-middle text-center">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="myExpenseHistory">
+                  <tr><td colspan="4" class="text-muted py-3">Loading history...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="modal-backdrop doc-preview-modal" id="docPreviewModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h5 id="previewDocTitle">Document Preview</h5>
+      <div>
+        <a id="previewDownloadBtn" href="#" download class="btn btn-sm btn-primary me-2"><i class="fa-solid fa-download me-1"></i>Download</a>
+        <button class="modal-close" onclick="closeModal('docPreviewModal')"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+    </div>
+    <div class="modal-body" id="previewBody">
+      </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="sidebar.js"></script>
+<script>
+  const currentUserName = localStorage.getItem('currentUserName');
+  const role = localStorage.getItem('userRole');
+  const currentUserDept = localStorage.getItem('userDept') || 'General';
+
+  // For Manager View
+  let allGlobalExpenses = [];
+  let allGlobalHardware = [];
+
+  // For Vault Simulation (Local Storage)
+  let myVaultDocs = JSON.parse(localStorage.getItem(`vault_${currentUserName}`)) || [];
+
+  document.addEventListener('DOMContentLoaded', () => {
+    SidebarBuilder.init();
+
+    if (role === 'Boss') {
+      alert("Boss, you don't have a personal workspace! Go to your Operations tabs.");
+      window.location.href = 'index.html';
+      return;
+    }
+
+    // URL Routing
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabMode = urlParams.get('tab') || 'assets'; 
+
+    const titleMap = {
+      'assets': 'My Assets',
+      'docs': 'Document Vault',
+      'tax': 'Smart Tax Planner',
+      'expense': 'Reimbursements'
+    };
+    document.getElementById('pageTitle').innerText = titleMap[tabMode] || 'My Workspace';
+
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    const targetPanel = document.getElementById(`panel-${tabMode}`);
+    if (targetPanel) targetPanel.classList.add('active');
+    else document.getElementById('panel-assets').classList.add('active');
+
+    // Init specific tabs
+    calculateTax();
+    renderVaultDocs(); 
+    
+    if (role === 'Manager') {
+        document.getElementById('managerExpenseSection').style.display = 'block';
+        document.getElementById('managerHardwareSection').style.display = 'block';
+        loadTeamDirectoryForAssets();
+    }
+
+    if (tabMode === 'assets') {
+        loadMyAssets();
+        if (role === 'Manager') loadAllHardware();
+    } else if (tabMode === 'expense') {
+        loadMyExpenses();
+        if (role === 'Manager') loadAllExpenses();
+    }
+  });
+
+  // --- ASSETS LOGIC (EMPLOYEE) ---
+  async function loadMyAssets() {
+    try {
+      const res = await fetch(`http://localhost:8080/teamhub/assets`); // Need full list first, then filter locally if backend endpoint isn't ready
+      const assets = await res.json();
+      
+      const myAssets = assets.filter(a => a.employeeName === currentUserName);
+      const tbody = document.getElementById('assetsTableBody');
+      tbody.innerHTML = ''; 
+
+      if (myAssets.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">No hardware assigned to you yet.</td></tr>`;
+        return;
+      }
+
+      myAssets.forEach(asset => {
+        const icon = asset.type.toLowerCase().includes('laptop') ? 'fa-laptop' : 
+                     asset.type.toLowerCase().includes('desktop') ? 'fa-desktop' : 'fa-mobile-screen';
+        
+        tbody.innerHTML += `
+          <tr>
+            <td style="text-align: center; width: 60px;">
+              <div style="background: var(--surface-3); width: 44px; height: 44px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                <i class="fa-solid ${icon} fs-5" style="color: var(--indigo-500);"></i>
+              </div>
+            </td>
+            <td><strong>${asset.model}</strong><br><small class="text-muted">${asset.type}</small></td>
+            <td><span class="badge badge-gray" style="border: 1px solid var(--border);">${asset.serialNumber}</span></td>
+            <td>${new Date(asset.assignedDate).toLocaleDateString()}</td>
+            <td><span class="badge badge-green">${asset.status || 'Assigned'}</span></td>
+          </tr>
+        `;
+      });
+    } catch (error) { console.error("Could not load assets:", error); }
+  }
+
+  // --- ASSETS LOGIC (MANAGER TEAM ASSIGNMENT) ---
+  async function loadTeamDirectoryForAssets() {
+      try {
+          const res = await fetch('http://localhost:8080/employees');
+          const rawUsers = await res.json();
+          const assetSelect = document.getElementById('assetEmpSelect');
+          
+          let myTeam = rawUsers.filter(user => user.department === currentUserDept && user.role !== 'Boss');
+
+          assetSelect.innerHTML = '<option value="" selected disabled>Choose Employee...</option>';
+          myTeam.forEach(emp => {
+              assetSelect.innerHTML += `<option value="${emp.name}">${emp.name}</option>`;
+          });
+      } catch(e) {}
+  }
+
+  async function loadAllHardware() {
+      if (role !== 'Manager') return;
+      try {
+          const res = await fetch('http://localhost:8080/teamhub/assets');
+          allGlobalHardware = await res.json();
+          allGlobalHardware.reverse();
+          filterHardware();
+      } catch (e) { console.error(e); }
+  }
+
+  function filterHardware() {
+      const searchQ = document.getElementById('hwSearch').value.toLowerCase();
+      const typeQ = document.getElementById('hwTypeFilter').value;
+
+      let filtered = [...allGlobalHardware];
+
+      if (typeQ !== 'All') {
+          filtered = filtered.filter(hw => hw.type === typeQ);
+      }
+
+      if (searchQ) {
+          filtered = filtered.filter(hw => 
+              (hw.employeeName && hw.employeeName.toLowerCase().includes(searchQ)) ||
+              (hw.model && hw.model.toLowerCase().includes(searchQ)) ||
+              (hw.serialNumber && hw.serialNumber.toLowerCase().includes(searchQ))
+          );
+      }
+
+      renderHardwareLedger(filtered);
+  }
+
+  function renderHardwareLedger(hardwareList) {
+      const tbody = document.getElementById('hwLedgerBody');
+      tbody.innerHTML = '';
+
+      if (hardwareList.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-5">No hardware assignments found.</td></tr>`;
+          return;
+      }
+
+      hardwareList.forEach(hw => {
+          let icon = 'fa-microchip';
+          if (hw.type === 'Laptop') icon = 'fa-laptop';
+          else if (hw.type === 'Desktop') icon = 'fa-desktop';
+          else if (hw.type === 'Mobile') icon = 'fa-mobile-screen';
+
+          const dateDisplay = hw.assignedDate ? new Date(hw.assignedDate).toLocaleString('en-US', {month: 'short', day: 'numeric', year: 'numeric'}) : 'Unknown';
+
+          tbody.innerHTML += `
+            <tr>
+              <td>
+                <div class="user-chip">
+                  <img src="${avatarUrl(hw.employeeName)}" class="avatar" width="32" height="32">
+                  <div class="user-chip-name">${hw.employeeName}</div>
+                </div>
+              </td>
+              <td>
+                  <div style="font-weight: 500; font-size: 13.5px;"><i class="fa-solid ${icon} text-indigo me-2"></i>${hw.model}</div>
+                  <div style="font-size: 11px; color: var(--text-muted);">${hw.type}</div>
+              </td>
+              <td style="font-family: monospace; font-size: 12px; color: var(--text-secondary);">${hw.serialNumber}</td>
+              <td style="font-size: 12px; color: var(--text-secondary);">${dateDisplay}</td>
+              <td><span class="badge badge-green"><i class="fa-solid fa-check me-1"></i> Assigned</span></td>
+            </tr>
+          `;
+      });
+  }
+
+  document.getElementById('assignAssetForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const empName = document.getElementById('assetEmpSelect').value;
+    if(!empName) return alert("Please select an employee first.");
+    
+    const payload = { 
+        employeeName: empName, 
+        type: document.getElementById('assetType').value, 
+        model: document.getElementById('assetModel').value, 
+        serialNumber: document.getElementById('assetSerial').value,
+        assignedDate: new Date().toISOString(), 
+        status: "Assigned"
+    };
+
+    try {
+      const res = await fetch('http://localhost:8080/teamhub/assets/assign', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      if (res.ok) { 
+          alert(`Hardware assigned to ${empName}!`); 
+          document.getElementById('assignAssetForm').reset(); 
+          loadAllHardware(); 
+      }
+    } catch (e) { alert('Error assigning hardware.'); }
+  });
+
+
+  // --- DOCUMENT VAULT LOGIC ---
+  function handleVaultUpload(input) {
+      if (input.files && input.files[0]) {
+          const file = input.files[0];
+          const reader = new FileReader();
+
+          reader.onload = function(e) {
+              const fileBase64 = e.target.result; 
+              
+              const newDoc = {
+                  id: Date.now(), // Generate a fake ID
+                  title: file.name,
+                  type: file.type,
+                  data: fileBase64,
+                  addedDate: new Date().toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'})
+              };
+
+              myVaultDocs.push(newDoc);
+              localStorage.setItem(`vault_${currentUserName}`, JSON.stringify(myVaultDocs));
+              
+              input.value = ''; // Reset
+              renderVaultDocs();
+          };
+
+          reader.readAsDataURL(file);
+      }
+  }
+
+  function renderVaultDocs() {
+      const docContainer = document.getElementById('docsGrid');
+      docContainer.innerHTML = ''; 
+
+      if (myVaultDocs.length === 0) {
+        docContainer.innerHTML = `<div class="col-12 text-center text-muted py-4">Your document vault is currently empty. Upload files above.</div>`;
+        return;
+      }
+
+      myVaultDocs.forEach(doc => {
+        const isImage = doc.type.startsWith('image/');
+        const iconClass = isImage ? 'fa-file-image text-success' : 'fa-file-pdf text-danger';
+        
+        docContainer.innerHTML += `
+          <div class="col-md-3 col-sm-6">
+            <div class="card p-3 d-flex flex-row align-items-center" style="cursor: pointer; transition: 0.2s;" onclick="previewDoc(${doc.id})" onmouseover="this.style.borderColor='var(--indigo-500)'; this.style.backgroundColor='var(--surface-2)';" onmouseout="this.style.borderColor='var(--border)'; this.style.backgroundColor='var(--surface)';">
+              <i class="fa-solid ${iconClass} fs-2 me-3"></i>
+              <div class="flex-grow-1" style="overflow: hidden;">
+                <h6 class="mb-0" style="font-family: var(--font-main); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${doc.title}</h6>
+                <small class="text-muted" style="font-size: 11px;">Added: ${doc.addedDate}</small>
+              </div>
+              <button class="btn btn-sm text-danger" onclick="event.stopPropagation(); deleteDoc(${doc.id})" title="Delete" style="padding:0;"><i class="fa-solid fa-trash"></i></button>
+            </div>
+          </div>
+        `;
+      });
+  }
+
+  function deleteDoc(id) {
+      if(confirm("Permanently delete this document from your vault?")) {
+          myVaultDocs = myVaultDocs.filter(d => d.id !== id);
+          localStorage.setItem(`vault_${currentUserName}`, JSON.stringify(myVaultDocs));
+          renderVaultDocs();
+      }
+  }
+
+  function previewDoc(id) {
+      const doc = myVaultDocs.find(d => d.id === id);
+      if(!doc) return;
+
+      document.getElementById('previewDocTitle').textContent = doc.title;
+      
+      const downloadBtn = document.getElementById('previewDownloadBtn');
+      downloadBtn.href = doc.data;
+      downloadBtn.download = doc.title;
+
+      const previewBody = document.getElementById('previewBody');
+      previewBody.innerHTML = '';
+
+      if (doc.type.startsWith('image/')) {
+          previewBody.innerHTML = `<img src="${doc.data}" alt="Preview">`;
+      } else {
+          // It's a PDF or something else iframe-able
+          previewBody.innerHTML = `<iframe src="${doc.data}"></iframe>`;
+      }
+
+      openModal('docPreviewModal');
+  }
+
+  // --- EXPENSES LOGIC (PERSONAL & MANAGER) ---
+  async function loadMyExpenses() {
+    try {
+      const res = await fetch(`http://localhost:8080/workspace/expenses`); // Get all
+      const allExpenses = await res.json();
+      
+      const myExpenses = allExpenses.filter(e => e.employeeName === currentUserName);
+      myExpenses.reverse(); // Newest first
+
+      const tbody = document.getElementById('myExpenseHistory');
+      tbody.innerHTML = '';
+
+      if(myExpenses.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="text-muted py-4">No expenses claimed yet.</td></tr>`;
+        return;
+      }
+
+      myExpenses.forEach(exp => {
+        let badgeColor = exp.status === 'Approved' ? 'badge-green' : exp.status === 'Rejected' ? 'badge-red' : 'badge-yellow';
+        tbody.innerHTML += `
+          <tr>
+            <td>${exp.dateSubmitted}</td>
+            <td style="text-align: left;">${exp.description}</td>
+            <td style="font-weight: 600;">$${exp.amount.toFixed(2)}</td>
+            <td><span class="badge ${badgeColor}">${exp.status}</span></td>
+          </tr>
+        `;
+      });
+    } catch(e) { console.error(e); }
+  }
+
+  // For MANAGER View
+  async function loadAllExpenses() {
+    if (role !== 'Manager') return;
+    try {
+      const res = await fetch('http://localhost:8080/teamhub/expenses');
+      allGlobalExpenses = await res.json();
+      allGlobalExpenses.reverse();
+      filterExpenses(); 
+    } catch (e) { console.error("Could not load expenses", e); }
+  }
+
+  function filterExpenses() {
+      const searchQ = document.getElementById('expSearch').value.toLowerCase();
+      const statusQ = document.getElementById('expStatusFilter').value;
+      const timeQ = document.getElementById('expTimeFilter').value;
+
+      let filtered = [...allGlobalExpenses];
+
+      if (statusQ !== 'All') {
+          filtered = filtered.filter(exp => exp.status === statusQ);
+      }
+      document.getElementById('expPanelTitle').innerText = statusQ === 'All' ? 'Entire Expense Ledger' : `${statusQ} Expenses`;
+
+      if (searchQ) {
+          filtered = filtered.filter(exp => 
+              (exp.employeeName && exp.employeeName.toLowerCase().includes(searchQ)) ||
+              (exp.description && exp.description.toLowerCase().includes(searchQ))
+          );
+      }
+
+      if (timeQ !== 'All') {
+          const now = new Date();
+          filtered = filtered.filter(exp => {
+              if (!exp.dateSubmitted) return false;
+              const expDate = new Date(exp.dateSubmitted);
+              if (timeQ === 'Month') {
+                  return expDate.getMonth() === now.getMonth() && expDate.getFullYear() === now.getFullYear();
+              }
+              return true;
+          });
+      }
+
+      renderExpenseQueue(filtered);
+  }
+
+  function renderExpenseQueue(expenses) {
+      const queue = document.getElementById('expenseQueue');
+      const badge = document.getElementById('notifCount');
+      
+      const pendingCount = allGlobalExpenses.filter(e => e.status === 'Pending').length;
+      if (pendingCount > 0) {
+          badge.style.display = 'inline-block';
+          badge.innerText = pendingCount;
+      } else {
+          badge.style.display = 'none';
+      }
+
+      if (expenses.length === 0) { 
+          queue.innerHTML = `
+          <div class="text-center py-5">
+            <div class="stat-icon gray mx-auto mb-3" style="width: 60px; height: 60px; font-size: 24px; background: var(--border); color: var(--text-muted);"><i class="fa-solid fa-inbox"></i></div>
+            <h6 style="color: var(--text-primary); font-family: var(--font-main);">No records found.</h6>
+          </div>`; 
+          return; 
+      }
+      
+      queue.innerHTML = '';
+      
+      expenses.forEach(exp => {
+        let statusBadge = `<span class="badge badge-yellow ms-2">Pending</span>`;
+        let actionButtons = `
+            <div class="d-flex gap-2">
+              <button class="btn btn-outline" style="color: var(--red); border-color: var(--red-light); padding: 6px 12px;" onclick="resolveExpense(${exp.id}, 'Rejected')"><i class="fa-solid fa-xmark"></i> Reject</button>
+              <button class="btn btn-green" style="padding: 6px 12px;" onclick="resolveExpense(${exp.id}, 'Approved')"><i class="fa-solid fa-check"></i> Approve</button>
+            </div>`;
+        
+        if (exp.status === 'Approved') {
+            statusBadge = `<span class="badge badge-green ms-2">Approved</span>`;
+            actionButtons = `<span style="font-size: 12px; color: var(--green); font-weight: 500;"><i class="fa-solid fa-check-double me-1"></i> Resolved</span>`;
+        } else if (exp.status === 'Rejected') {
+            statusBadge = `<span class="badge badge-red ms-2">Rejected</span>`;
+            actionButtons = `<span style="font-size: 12px; color: var(--red); font-weight: 500;"><i class="fa-solid fa-ban me-1"></i> Resolved</span>`;
+        }
+
+        queue.innerHTML += `
+        <div class="card mb-3 p-3 d-flex flex-row align-items-center justify-content-between shadow-sm" style="${exp.status !== 'Pending' ? 'opacity: 0.8;' : ''}">
+            <div class="d-flex align-items-center gap-3">
+              <div class="stat-icon indigo" style="width: 44px; height: 44px; font-size: 18px;"><i class="fa-solid fa-receipt"></i></div>
+              <div>
+                <h6 class="mb-1" style="font-family: var(--font-main); font-size: 14.5px;">${exp.employeeName} ${statusBadge}</h6>
+                <div style="font-size: 13px; color: var(--text-secondary);"><strong>$${exp.amount.toFixed(2)}</strong> &bull; ${exp.description} &bull; ${exp.dateSubmitted}</div>
+              </div>
+            </div>
+            ${actionButtons}
+        </div>`;
+      });
+  }
+
+  async function resolveExpense(id, status) {
+    try {
+      const res = await fetch(`http://localhost:8080/teamhub/expenses/${id}/status?status=${status}`, { method: 'PUT' });
+      if (res.ok) { 
+          loadAllExpenses(); 
+      }
+    } catch (e) { alert('Error updating status'); }
+  }
+
+
+  document.getElementById('expenseForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = {
+      employeeName: currentUserName,
+      description: document.getElementById('expDesc').value,
+      amount: parseFloat(document.getElementById('expAmount').value),
+      dateSubmitted: new Date().toISOString().split('T')[0],
+      status: 'Pending'
+    };
+
+    try {
+      // NOTE: Ensure your backend endpoint is correct here. If you used /workspace/expenses before, keep it. 
+      // Many times people use /teamhub/expenses for everything.
+      const res = await fetch('http://localhost:8080/teamhub/expenses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      
+      if (res.ok) {
+        alert("Expense submitted to Manager successfully!");
+        document.getElementById('expenseForm').reset();
+        loadMyExpenses(); 
+        if (role === 'Manager') loadAllExpenses(); // If Manager submits their own, reload the queue too
+      }
+    } catch(e) { alert("Failed to submit expense."); }
+  });
+
+  // --- TAX LOGIC ---
+  function calculateTax() {
+    const salary = parseFloat(document.getElementById('calcSalary').value) || 0;
+    const bonus = parseFloat(document.getElementById('calcBonus').value) || 0;
+    const investments = parseFloat(document.getElementById('calcInvestments').value) || 0;
+
+    const gross = salary + bonus;
+    const taxable = Math.max(0, gross - investments);
+
+    let tax = 0;
+    if (taxable > 150000) tax = (taxable * 0.30);
+    else if (taxable > 100000) tax = (taxable * 0.25);
+    else if (taxable > 60000) tax = (taxable * 0.20);
+    else if (taxable > 40000) tax = (taxable * 0.15);
+    else if (taxable > 20000) tax = (taxable * 0.10);
+
+    const format = (num) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);
+
+    document.getElementById('resGross').innerText = format(gross);
+    document.getElementById('resTaxable').innerText = format(taxable);
+    document.getElementById('resTax').innerText = `-${format(tax)}`;
+    document.getElementById('resNet').innerText = format(gross - tax);
+    document.getElementById('resMonthly').innerText = format((gross - tax) / 12);
+  }
+</script>
+</body>
+</html>
